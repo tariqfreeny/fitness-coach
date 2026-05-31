@@ -1,0 +1,16 @@
+{
+  "name": "Tariq",
+  "assessment_date": "2026-05-27",
+  "height": "6'3\"",
+  "weight_lbs": 262.6,
+  "lean_body_mass_lbs": 211.4,
+  "body_fat_mass_lbs": 57.5,
+  "skeletal_muscle_mass_lbs": 122.4,
+  "body_fat_pct": 19.5,
+  "bmi": 32.8,
+  "visceral_fat_level": 10,
+  "bmr_kcal": 2124,
+  "fat_loss_target_lbs": 13.9,
+  "lean_mass_target": "maintain",
+  "waist_hip_ratio": 1.01
+}

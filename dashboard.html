@@ -1,0 +1,2094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fitness Dashboard — Tariq Freeny</title>
+<style>
+
+/* ═══════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — single source of truth, no hex values elsewhere
+═══════════════════════════════════════════════════════════════════ */
+:root {
+  /* backgrounds */
+  --bg:           #09090b;
+  --surface:      #18181b;
+  --surface-2:    #27272a;
+  --scan-bg:      #0c0d13;
+  --scan-card:    #13141f;
+  --canvas-bg:    #080910;
+
+  /* borders */
+  --border:       #3f3f46;
+  --scan-border:  #1e2030;
+  --scan-dim:     #1a1b26;
+
+  /* text */
+  --text:         #fafafa;
+  --muted:        #a1a1aa;
+  --dim:          #52525b;
+
+  /* green — strength / lean tissue */
+  --green:        #4ade80;
+  --green-bg:     rgba(74, 222, 128, 0.08);
+  --green-dark:   #15803d;
+  --green-mid:    #16a34a;
+  --green-hi:     #86efac;
+
+  /* cyan — cardio / zone 2 */
+  --cyan:         #22d3ee;
+  --cyan-bg:      rgba(34, 211, 238, 0.08);
+  --cyan-hi:      #67e8f9;
+
+  /* amber — fat / zone 3-4 */
+  --amber:        #fbbf24;
+  --amber-bg:     rgba(251, 191, 36, 0.08);
+  --amber-hi:     #fde68a;
+
+  /* red — fat bar */
+  --red:          #f87171;
+
+  /* blue — InBody / scan UI */
+  --blue:         #3b82f6;
+  --blue-bg:      rgba(59, 130, 246, 0.08);
+
+  /* UI tokens */
+  --radius:       12px;
+  --font:         -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
+  --ease:         0.18s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:       0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:      0.01ms !important;
+    scroll-behavior:          auto !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LAYOUT UTILITIES
+═══════════════════════════════════════════════════════════════════ */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.section-title  { font-size: 26px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 32px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCROLL ANIMATION
+═══════════════════════════════════════════════════════════════════ */
+.fade-up {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.42s ease, transform 0.42s ease;
+}
+.fade-up.visible { opacity: 1; transform: none; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════════════════════════════ */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(9, 9, 11, .92);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 54px;
+}
+.nav-brand { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--green); text-decoration: none; }
+.nav-links  { display: flex; gap: 2px; list-style: none; }
+.nav-links a {
+  text-decoration: none; color: var(--muted);
+  font-size: 12px; font-weight: 500;
+  padding: 6px 12px; border-radius: 6px;
+  transition: all var(--ease);
+}
+.nav-links a:hover { color: var(--text); background: var(--surface-2); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ROADMAP STRIP  (mission-control banner, not a full section)
+═══════════════════════════════════════════════════════════════════ */
+#roadmap {
+  background: var(--scan-bg);
+  border-bottom: 1px solid var(--scan-border);
+  padding: 18px 0 0;
+}
+
+/* milestone track */
+.rm-track-row { position: relative; padding: 0 24px; margin-bottom: 12px; }
+.rm-track {
+  height: 3px; background: var(--surface-2);
+  border-radius: 99px; position: relative;
+}
+.rm-fill {
+  position: absolute; left: 0; top: 0; height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--green-hi));
+  border-radius: 99px; width: 0%;
+  transition: width 1.6s cubic-bezier(.34, 1.56, .64, 1);
+}
+.rm-miles {
+  display: flex; justify-content: space-between;
+  padding: 0 24px;
+}
+.rm-m { text-align: center; position: relative; }
+.rm-m-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--border);
+  margin: -7px auto 8px;
+  transition: all var(--ease);
+}
+.rm-m.done .rm-m-dot    { background: var(--green); border-color: var(--green); box-shadow: 0 0 8px rgba(74,222,128,.5); }
+.rm-m.current .rm-m-dot {
+  background: var(--green); border-color: var(--green);
+  box-shadow: 0 0 0 4px rgba(74,222,128,.2);
+  animation: mpulse 2.2s ease-in-out infinite;
+}
+@keyframes mpulse {
+  0%,100% { box-shadow: 0 0 0 4px rgba(74,222,128,.2); }
+  50%      { box-shadow: 0 0 0 8px rgba(74,222,128,.06); }
+}
+.rm-callout {
+  display: none; position: absolute; bottom: calc(100% + 8px);
+  left: 50%; transform: translateX(-50%);
+  font-size: 11px; font-weight: 700; color: var(--green);
+  background: var(--green-bg); border: 1px solid rgba(74,222,128,.28);
+  border-radius: 99px; padding: 3px 10px; white-space: nowrap;
+}
+.rm-m.current .rm-callout { display: block; }
+.rm-m-wk  { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 1px; }
+.rm-m.done .rm-m-wk, .rm-m.current .rm-m-wk { color: var(--green); }
+.rm-m-wt  { font-size: 14px; font-weight: 800; letter-spacing: -.02em; }
+.rm-m-dt  { font-size: 10px; color: var(--dim); margin-top: 1px; }
+
+/* week squares */
+.rm-squares-row { padding: 0 24px; margin-bottom: 0; }
+.rm-squares {
+  display: grid; grid-template-columns: repeat(11, 1fr); gap: 4px;
+}
+.rm-sq {
+  height: 20px; border-radius: 4px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  cursor: default; transition: background var(--ease);
+  position: relative;
+}
+.rm-sq.done    { background: var(--green); border-color: var(--green); }
+.rm-sq.current {
+  background: rgba(74,222,128,.3); border-color: var(--green);
+  animation: sqpulse 2s ease-in-out infinite;
+}
+@keyframes sqpulse {
+  0%,100% { background: rgba(74,222,128,.3); }
+  50%     { background: rgba(74,222,128,.5); }
+}
+.rm-sq:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; white-space: nowrap;
+  background: var(--surface-2); color: var(--text);
+  padding: 3px 8px; border-radius: 5px; border: 1px solid var(--border);
+  pointer-events: none; z-index: 10;
+}
+
+/* summary row */
+.rm-summary {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--scan-border);
+  margin-top: 14px;
+}
+.rm-sum-item { padding: 12px 24px; }
+.rm-sum-item:not(:first-child) { border-left: 1px solid var(--scan-border); }
+.rm-sum-lbl { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.rm-sum-val { font-size: 16px; font-weight: 800; letter-spacing: -.01em; }
+.rm-sum-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════════════════════════════ */
+#hero {
+  padding: 56px 0 48px;
+  position: relative; overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+#hero::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 45% at 78% 50%, rgba(74,222,128,.06) 0%, transparent 70%),
+    radial-gradient(ellipse 35% 55% at 14% 85%, rgba(34,211,238,.04) 0%, transparent 70%);
+}
+.hero-grid { display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: start; }
+.hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--green); margin-bottom: 12px; }
+.hero-name    { font-size: clamp(48px, 8vw, 86px); font-weight: 900; letter-spacing: -.04em; line-height: .9; margin-bottom: 16px; }
+.hero-goal    { font-size: 16px; color: var(--muted); max-width: 460px; margin-bottom: 36px; }
+.hero-goal strong { color: var(--text); font-weight: 600; }
+.hero-stats   { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 38px; }
+.hs           { display: flex; flex-direction: column; gap: 3px; }
+.hs-val       { font-size: 32px; font-weight: 900; letter-spacing: -.03em; line-height: 1; }
+.hs-lbl       { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.hs-delta     { font-size: 11px; font-weight: 700; color: var(--green); }
+.hdiv         { width: 1px; height: 42px; background: var(--border); align-self: center; }
+.prog-block   { max-width: 460px; }
+.prog-meta    { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.prog-meta strong { color: var(--text); }
+.prog-track   { height: 5px; background: var(--surface-2); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+.prog-fill    {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--green-hi));
+  border-radius: 99px; width: 0%;
+  transition: width 1.5s cubic-bezier(.34, 1.56, .64, 1);
+}
+.prog-dates   { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); }
+
+/* today's focus card */
+.today-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+  min-width: 250px; max-width: 300px;
+}
+.tc-label   { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.tc-tag     {
+  display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 99px; margin-bottom: 10px;
+}
+.tc-tag.strength { background: var(--green-bg); color: var(--green); }
+.tc-tag.cardio   { background: var(--cyan-bg);  color: var(--cyan);  }
+.tc-tag.rest     { background: var(--amber-bg); color: var(--amber); }
+.tc-session     { font-size: 14px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
+.tc-nutrition   { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+.tc-nutrition span { color: var(--text); font-weight: 600; }
+.tc-cue {
+  font-size: 12px; color: var(--muted); line-height: 1.45;
+  border-top: 1px solid var(--surface-2); padding-top: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   NUTRITION
+═══════════════════════════════════════════════════════════════════ */
+#nutrition { padding: 64px 0; border-bottom: 1px solid var(--border); }
+.nutr-tabs  { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
+.tab {
+  padding: 8px 18px; border-radius: 8px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); font-family: var(--font); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all var(--ease);
+}
+.tab:hover { color: var(--text); }
+.tab.active.s    { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+.tab.active.c    { background: var(--cyan-bg);  border-color: var(--cyan);  color: var(--cyan);  }
+.tab.active.r    { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
+.tab.active.shop { background: var(--blue-bg);  border-color: var(--blue);  color: var(--blue);  }
+.npanel         { display: none; }
+.npanel.active  { display: block; }
+
+/* day-type panels */
+.nutr-top { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.cal-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+}
+.cal-lbl { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.cal-val { font-size: 40px; font-weight: 900; letter-spacing: -.03em; line-height: 1; margin-bottom: 4px; }
+.cal-val small { font-size: 16px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+.cal-sub { font-size: 12px; color: var(--muted); }
+.if-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.if-win  { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+.if-time { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.if-arr  { color: var(--dim); font-size: 18px; }
+.if-note { font-size: 11px; color: var(--muted); }
+
+/* macro bars */
+.macro-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px; margin-bottom: 16px;
+}
+.macro-row { display: grid; grid-template-columns: 76px 1fr 68px; align-items: center; gap: 14px; margin-bottom: 14px; }
+.macro-row:last-child { margin-bottom: 0; }
+.m-lbl { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.m-lbl.p { color: var(--green); }
+.m-lbl.c { color: var(--cyan);  }
+.m-lbl.f { color: var(--amber); }
+.m-track { height: 7px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.m-fill  { height: 100%; border-radius: 99px; width: 0%; transition: width 0.9s cubic-bezier(.34, 1.56, .64, 1); }
+.m-fill.p { background: linear-gradient(90deg, var(--green), var(--green-hi)); }
+.m-fill.c { background: linear-gradient(90deg, var(--cyan),  var(--cyan-hi));  }
+.m-fill.f { background: linear-gradient(90deg, var(--amber), var(--amber-hi)); }
+.m-amt { font-size: 13px; font-weight: 800; text-align: right; }
+
+/* meal grid */
+.meal-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.meal-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+}
+.meal-time    { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.meal-name    { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.meal-pills   { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 9px; }
+.pill         { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; background: var(--surface-2); }
+.pill.p { color: var(--green); }
+.pill.c { color: var(--cyan);  }
+.pill.f { color: var(--amber); }
+.meal-kcal    { font-size: 22px; font-weight: 900; letter-spacing: -.02em; }
+.meal-kcal small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.meal-sample  { font-size: 11px; color: var(--dim); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--surface-2); line-height: 1.4; }
+
+/* quick build expandable */
+.quick-build { margin-top: 10px; border-top: 1px solid var(--surface-2); padding-top: 9px; }
+.quick-build summary {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--blue); cursor: pointer; list-style: none;
+  display: flex; align-items: center; gap: 5px;
+  transition: color var(--ease);
+}
+.quick-build summary::-webkit-details-marker { display: none; }
+.quick-build summary::before { content: '+'; font-size: 14px; font-weight: 900; }
+details[open] > .quick-build summary::before { content: '−'; }
+.qb-body { margin-top: 8px; display: flex; flex-direction: column; gap: 0; }
+.qb-ing  {
+  font-size: 11px; color: var(--text);
+  padding: 4px 0; border-bottom: 1px solid var(--surface-2);
+}
+.qb-ing:last-of-type { border-bottom: none; }
+.qb-prep { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+
+/* shopping list */
+.shop-header { margin-bottom: 18px; }
+.shop-note   { font-size: 12px; color: var(--muted); }
+.shop-cats   { display: flex; flex-direction: column; gap: 12px; }
+.shop-cat    { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.shop-cat-hd { font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); padding: 11px 16px; border-bottom: 1px solid var(--border); background: var(--blue-bg); }
+.shop-item   { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; padding: 10px 16px; border-bottom: 1px solid var(--surface-2); }
+.shop-item:last-child { border-bottom: none; }
+.shop-item-name  { font-size: 13px; font-weight: 600; }
+.shop-item-meals { font-size: 11px; color: var(--dim); margin-top: 2px; }
+.shop-item-right { text-align: right; flex-shrink: 0; }
+.shop-item-qty   { font-size: 13px; font-weight: 700; }
+.shop-item-unit  { font-size: 11px; color: var(--muted); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   BODY COMPOSITION
+═══════════════════════════════════════════════════════════════════ */
+#composition { padding: 64px 0; border-bottom: 1px solid var(--border); }
+.stat-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 10px; margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+  transition: all var(--ease);
+}
+.stat-card:hover { transform: translateY(-2px); border-color: var(--dim); }
+.stat-card.g { border-color: rgba(74,222,128,.22); }
+.stat-card.c { border-color: rgba(34,211,238,.22); }
+.stat-card.a { border-color: rgba(251,191,36,.22); }
+.sc-lbl   { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+.sc-val   { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1; margin-bottom: 4px; }
+.sc-val small { font-size: 13px; font-weight: 400; color: var(--muted); }
+.sc-target  { font-size: 11px; color: var(--muted); }
+.sc-target span { color: var(--green); font-weight: 600; }
+.sc-delta   { font-size: 11px; color: var(--dim); margin-top: 3px; }
+
+/* composition bar */
+.comp-bar-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 24px;
+}
+.comp-bar-lbl { font-size: 11px; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
+.comp-bar     { height: 22px; border-radius: 6px; overflow: hidden; display: flex; margin-bottom: 10px; }
+.cb-lean {
+  background: linear-gradient(90deg, var(--green), #22c55e);
+  height: 100%; width: 0%;
+  transition: width 1.4s cubic-bezier(.34, 1.56, .64, 1);
+  display: flex; align-items: center; padding-left: 10px;
+  font-size: 10px; font-weight: 800; color: #052e16; white-space: nowrap;
+}
+.cb-fat {
+  background: linear-gradient(90deg, var(--red), #ef4444);
+  height: 100%; width: 0%;
+  transition: width 1.4s cubic-bezier(.34, 1.56, .64, 1) .08s;
+  display: flex; align-items: center; padding-left: 8px;
+  font-size: 10px; font-weight: 800; color: #fff; white-space: nowrap;
+}
+.comp-legend { display: flex; gap: 18px; font-size: 11px; color: var(--muted); }
+.comp-legend span { display: flex; align-items: center; gap: 6px; }
+.cl-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   BODY SCAN  (3D viewer UI)
+═══════════════════════════════════════════════════════════════════ */
+#bodyscan {
+  padding: 0;
+  background: var(--scan-bg);
+  border-bottom: 1px solid var(--scan-border);
+}
+.bs-wrap {
+  padding: 20px 24px 0;
+  display: flex; flex-direction: column;
+  max-width: 1440px; margin: 0 auto;
+}
+.bs-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-bottom: 14px; border-bottom: 1px solid var(--scan-border);
+  margin-bottom: 16px;
+}
+.bs-title { font-size: 22px; font-weight: 900; letter-spacing: -.02em; color: var(--text); }
+.bs-date  { font-size: 12px; color: var(--dim); }
+.bs-main  { display: grid; grid-template-columns: 250px 1fr 295px; gap: 14px; align-items: start; }
+
+/* left stat panel */
+.bs-left { display: flex; flex-direction: column; gap: 10px; }
+.bs-card { background: var(--scan-card); border: 1px solid var(--scan-border); border-radius: 10px; padding: 14px 16px; }
+.bs-card-hd { font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--blue); margin-bottom: 10px; }
+.bs-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--scan-dim); }
+.bs-row:last-child { border-bottom: none; }
+.bs-row-lbl { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+.bs-row-ico { width: 14px; height: 14px; opacity: .65; color: var(--blue); flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bs-row-val { font-size: 12px; font-weight: 600; color: var(--text); }
+
+/* center 3D viewport */
+.bs-center { display: flex; flex-direction: column; }
+.bs-tabs   { display: flex; border-bottom: 1px solid var(--scan-border); }
+.bs-tab {
+  font-family: var(--font); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  padding: 9px 16px; background: transparent; border: none; border-bottom: 2px solid transparent;
+  color: var(--dim); cursor: pointer; transition: all var(--ease); margin-bottom: -1px;
+}
+.bs-tab:hover     { color: var(--text); }
+.bs-tab.act       { color: var(--blue); border-bottom-color: var(--blue); }
+.bs-vp {
+  position: relative;
+  background: var(--canvas-bg);
+  border: 1px solid var(--scan-border); border-top: none;
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+  height: 590px;    /* explicit height — canvas uses inset:0 to fill this */
+}
+/* Single definition of #body-canvas — fills parent absolutely */
+#body-canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.bs-loading {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--dim); letter-spacing: .08em;
+  z-index: 5; pointer-events: none;
+}
+.bs-toolbar {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 6px; z-index: 10;
+}
+.bs-tool {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 9px 10px; min-width: 52px;
+  background: rgba(10,11,18,.88); border: 1px solid var(--scan-border); border-radius: 8px;
+  color: var(--muted); font-family: var(--font); font-size: 9px; font-weight: 700; letter-spacing: .06em;
+  cursor: pointer; transition: all var(--ease);
+}
+.bs-tool:hover { color: var(--text); border-color: var(--blue); }
+.bs-tool.act   { color: var(--blue); border-color: var(--blue); background: var(--blue-bg); }
+.bs-tool svg   { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bs-views {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 4px; z-index: 10;
+  background: rgba(10,11,18,.9); border: 1px solid var(--scan-border); border-radius: 10px; padding: 5px;
+}
+.bs-view {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 7px 13px; background: transparent; border: 1px solid transparent; border-radius: 7px;
+  color: var(--muted); font-family: var(--font); font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  cursor: pointer; transition: all var(--ease);
+}
+.bs-view:hover { color: var(--text); }
+.bs-view.act   { color: var(--blue); background: var(--blue-bg); border-color: rgba(59,130,246,.3); }
+.bs-view svg   { width: 16px; height: 22px; fill: currentColor; opacity: .5; }
+.bs-view.act svg { opacity: 1; }
+
+/* right panel */
+.bs-right { display: flex; flex-direction: column; gap: 10px; }
+.bs-meas-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--scan-dim); font-size: 13px; }
+.bs-meas-row:last-child { border-bottom: none; }
+.bs-meas-name { color: var(--muted); }
+.bs-meas-val  { color: var(--text); font-weight: 700; }
+.bs-sil-wrap  { padding: 6px 0 2px; }
+.bs-seg-legend { display: flex; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+.bs-seg-dot    { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+.bs-seg-dot.lean { background: var(--blue);  }
+.bs-seg-dot.fat  { background: var(--amber); }
+.bs-seg-leg-lbl  { font-size: 11px; color: var(--muted); display: flex; align-items: center; }
+.seg-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.seg-tbl th { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); text-align: right; padding: 0 0 8px; }
+.seg-tbl th:first-child { text-align: left; }
+.seg-tbl td { padding: 7px 0; border-top: 1px solid var(--scan-dim); }
+.seg-tbl td:first-child   { color: var(--muted); }
+.seg-tbl td:nth-child(2)  { color: var(--blue);  font-weight: 700; text-align: right; }
+.seg-tbl td:nth-child(3)  { color: var(--amber); font-weight: 700; text-align: right; }
+/* fat toggle lives in right panel */
+.fat-toggle-btn {
+  width: 100%; font-family: var(--font); font-size: 12px; font-weight: 700;
+  padding: 9px 14px; border-radius: 8px; cursor: pointer;
+  transition: all var(--ease); letter-spacing: .04em;
+}
+.fat-on  { background: var(--amber-bg); border: 1px solid var(--amber); color: var(--amber); }
+.fat-off { background: var(--cyan-bg);  border: 1px solid var(--cyan);  color: var(--cyan);  }
+.bs-footer-bar { text-align: center; font-size: 11px; color: var(--dim); padding: 12px 0 18px; margin-top: 14px; border-top: 1px solid var(--scan-border); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   WEEKLY TRAINING PLAN
+═══════════════════════════════════════════════════════════════════ */
+#training { padding: 64px 0; border-bottom: 1px solid var(--border); }
+.day-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 8px; margin-bottom: 12px;
+}
+.day-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 10px;
+  cursor: pointer; text-align: center; position: relative;
+  transition: all var(--ease);
+}
+.day-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,.5); }
+.day-card.type-strength:hover { border-color: var(--green); }
+.day-card.type-cardio         { border-color: rgba(34,211,238,.25); }
+.day-card.type-cardio:hover   { border-color: var(--cyan); }
+.day-card.type-rest           { border-color: rgba(251,191,36,.18); }
+.day-card.type-rest:hover     { border-color: var(--amber); }
+.day-card.is-today            { border-color: var(--green); background: var(--green-bg); }
+.day-card.is-today::before {
+  content: 'TODAY'; position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+  font-size: 9px; font-weight: 800; letter-spacing: .08em;
+  background: var(--green); color: #052e16; padding: 2px 8px; border-radius: 99px;
+}
+.dc-day  { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.dc-tag  { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 99px; margin-bottom: 9px; }
+.dc-tag.strength { background: var(--green-bg); color: var(--green); }
+.dc-tag.cardio   { background: var(--cyan-bg);  color: var(--cyan);  }
+.dc-tag.rest     { background: var(--amber-bg); color: var(--amber); }
+.dc-name { font-size: 11px; font-weight: 700; line-height: 1.3; margin-bottom: 3px; }
+.dc-sub  { font-size: 10px; color: var(--dim); }
+.dc-dur  { font-size: 10px; color: var(--dim); margin-top: 7px; border-top: 1px solid var(--surface-2); padding-top: 6px; }
+.training-hint { font-size: 11px; color: var(--dim); text-align: center; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════════════════════════ */
+#overlay {
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  position: fixed; inset: 0; background: rgba(0,0,0,.72);
+  z-index: 200; opacity: 0; pointer-events: none;
+  transition: opacity var(--ease);
+}
+#overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 28px;
+  max-width: 660px; width: 100%; max-height: 88vh; overflow-y: auto;
+  transform: scale(.94); opacity: 0;
+  transition: transform var(--ease), opacity var(--ease);
+}
+#overlay.open .modal { transform: scale(1); opacity: 1; }
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.modal-title { font-size: 18px; font-weight: 800; }
+.modal-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.modal-close {
+  background: var(--surface-2); border: none; color: var(--muted);
+  width: 30px; height: 30px; border-radius: 7px;
+  cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all var(--ease);
+}
+.modal-close:hover { background: var(--border); color: var(--text); }
+.ex-table { width: 100%; border-collapse: collapse; }
+.ex-table th { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 0 12px 9px 0; border-bottom: 1px solid var(--border); }
+.ex-table td { padding: 11px 12px 11px 0; border-bottom: 1px solid rgba(63,63,70,.35); font-size: 13px; vertical-align: top; }
+.ex-table tr:last-child td { border-bottom: none; }
+.ex-name { font-weight: 700; }
+.ex-cue  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.ex-load { color: var(--amber); font-weight: 700; white-space: nowrap; }
+/* rest protocol card */
+.rest-protocol { margin-top: 18px; background: var(--surface-2); border-radius: 10px; padding: 16px; }
+.rp-title { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--cyan); margin-bottom: 10px; }
+.rp-items { display: flex; flex-direction: column; gap: 8px; }
+.rp-item  { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.rp-dot   { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); flex-shrink: 0; }
+/* cardio modal */
+.c-steps { display: flex; flex-direction: column; gap: 8px; }
+.c-step  { display: flex; gap: 12px; padding: 12px; background: var(--surface-2); border-radius: 8px; }
+.c-num   { width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.c-text  { font-size: 13px; line-height: 1.4; }
+.hr-zone { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 99px; margin-bottom: 14px; }
+.hr-zone.z2  { background: rgba(34,211,238,.12); color: var(--cyan);  border: 1px solid rgba(34,211,238,.3); }
+.hr-zone.z34 { background: rgba(251,191,36,.12); color: var(--amber); border: 1px solid rgba(251,191,36,.3); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════════════════ */
+footer { padding: 22px 24px; text-align: center; font-size: 11px; color: var(--dim); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 1050px) {
+  .bs-main { grid-template-columns: 220px 1fr 260px; }
+}
+@media (max-width: 900px) {
+  .day-grid   { grid-template-columns: repeat(4,1fr); }
+  .nutr-top   { grid-template-columns: 1fr; }
+  .meal-grid  { grid-template-columns: 1fr; }
+  .bs-main    { grid-template-columns: 1fr 1fr; }
+  .bs-right   { display: none; }
+}
+@media (max-width: 700px) {
+  .hero-grid  { grid-template-columns: 1fr; }
+  .today-card { max-width: 100%; }
+  .bs-main    { grid-template-columns: 1fr; }
+  .bs-left    { display: none; }
+  .rm-summary { grid-template-columns: 1fr; }
+  .rm-sum-item:not(:first-child) { border-left: none; border-top: 1px solid var(--scan-border); }
+}
+@media (max-width: 600px) {
+  .day-grid   { grid-template-columns: repeat(2,1fr); }
+  .stat-grid  { grid-template-columns: repeat(2,1fr); }
+  .hero-stats { gap: 16px; }
+  .hdiv       { display: none; }
+  .rm-squares { gap: 2px; }
+  .rm-sq      { height: 14px; }
+  nav .nav-links { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     NAV
+════════════════════════════════════════════════════════════════ -->
+<nav>
+  <a class="nav-brand" href="#roadmap">Tariq Freeny &middot; Recomp</a>
+  <ul class="nav-links">
+    <li><a href="#roadmap">Timeline</a></li>
+    <li><a href="#hero">Overview</a></li>
+    <li><a href="#nutrition">Nutrition</a></li>
+    <li><a href="#composition">Composition</a></li>
+    <li><a href="#bodyscan">3D Scan</a></li>
+    <li><a href="#training">Training</a></li>
+  </ul>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ROADMAP STRIP  (mission-control banner)
+════════════════════════════════════════════════════════════════ -->
+<section id="roadmap" aria-label="11-week progress roadmap">
+  <div class="rm-track-row">
+    <div class="rm-track">
+      <div class="rm-fill" id="rm-fill"></div>
+    </div>
+  </div>
+  <div class="rm-miles" id="rm-miles"><!-- JS --></div>
+  <div class="rm-squares-row" style="margin-top:12px">
+    <div class="rm-squares" id="rm-squares"><!-- JS --></div>
+  </div>
+  <div class="rm-summary">
+    <div class="rm-sum-item">
+      <div class="rm-sum-lbl">Start</div>
+      <div class="rm-sum-val">May 27, 2026</div>
+      <div class="rm-sum-sub">262.6 lb &middot; 19.5% BF</div>
+    </div>
+    <div class="rm-sum-item">
+      <div class="rm-sum-lbl">Midpoint &mdash; Wk 6</div>
+      <div class="rm-sum-val">~July 8, 2026</div>
+      <div class="rm-sum-sub">~255 lb &middot; ~18% BF</div>
+    </div>
+    <div class="rm-sum-item">
+      <div class="rm-sum-lbl">Goal</div>
+      <div class="rm-sum-val" style="color:var(--green)">~Aug 12, 2026</div>
+      <div class="rm-sum-sub">~248.7 lb &middot; ~16.6% BF</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     HERO
+════════════════════════════════════════════════════════════════ -->
+<section id="hero" aria-label="Dashboard overview">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-eyebrow fade-up">Body Recomposition Protocol &middot; 11-Week Program</div>
+        <h1 class="hero-name fade-up">Tariq<br>Freeny</h1>
+        <p class="hero-goal fade-up">Lose <strong>13.9 lb of fat</strong> while preserving lean mass &mdash; Former D1 athlete &middot; Advanced training &middot; Lifetime Fitness, Chicago</p>
+        <div class="hero-stats fade-up">
+          <div class="hs">
+            <div class="hs-val" data-count="262.6" data-dec="1">0</div>
+            <div class="hs-lbl">Current (lb)</div>
+          </div>
+          <div class="hdiv"></div>
+          <div class="hs">
+            <div class="hs-val" style="color:var(--green)" data-count="248.7" data-dec="1">0</div>
+            <div class="hs-lbl">Target (lb)</div>
+            <div class="hs-delta">&#8722;13.9 lb fat</div>
+          </div>
+          <div class="hdiv"></div>
+          <div class="hs">
+            <div class="hs-val" data-count="19.5" data-dec="1">0</div>
+            <div class="hs-lbl">Body Fat %</div>
+            <div class="hs-delta">Goal ~16.6%</div>
+          </div>
+          <div class="hdiv"></div>
+          <div class="hs">
+            <div class="hs-val" data-count="2880" data-dec="0">0</div>
+            <div class="hs-lbl">Avg kcal/day</div>
+            <div class="hs-delta">&#8722;625 deficit</div>
+          </div>
+        </div>
+        <div class="prog-block fade-up">
+          <div class="prog-meta">
+            <strong id="prog-wk-lbl">Week 1 of 11</strong>
+            <span id="prog-pct-lbl">5% complete</span>
+          </div>
+          <div class="prog-track">
+            <div class="prog-fill" id="prog-fill"></div>
+          </div>
+          <div class="prog-dates">
+            <span>Started May 27, 2026</span>
+            <span>Goal: ~Aug 12, 2026</span>
+          </div>
+        </div>
+      </div>
+      <!-- Today's Focus card (right column) -->
+      <div class="today-card fade-up" id="today-card">
+        <div class="tc-label">Today&rsquo;s Focus</div>
+        <div class="tc-tag" id="tc-tag">STRENGTH</div>
+        <div class="tc-session" id="tc-session">Loading&hellip;</div>
+        <div class="tc-nutrition">Nutrition tab: <span id="tc-nut">Strength Day</span></div>
+        <div class="tc-cue" id="tc-cue"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     NUTRITION
+════════════════════════════════════════════════════════════════ -->
+<section id="nutrition" aria-label="Nutrition targets">
+  <div class="container">
+    <div class="section-label fade-up">Intermittent Fasting &middot; 12:00 PM &ndash; 8:00 PM Window</div>
+    <h2 class="section-title fade-up">Nutrition Targets</h2>
+    <div class="nutr-tabs fade-up">
+      <button class="tab s" data-tab="s">Strength Day</button>
+      <button class="tab c" data-tab="c">Cardio Day</button>
+      <button class="tab r" data-tab="r">Rest Day</button>
+      <button class="tab shop" data-tab="shop">Shopping List</button>
+    </div>
+
+    <!-- ── STRENGTH DAY ── -->
+    <div class="npanel" id="np-s">
+      <div class="nutr-top">
+        <div class="cal-card" style="border-color:rgba(74,222,128,.25)">
+          <div class="cal-lbl">Daily Calories</div>
+          <div class="cal-val">3,053 <small>kcal</small></div>
+          <div class="cal-sub">TDEE 3,505 &middot; deficit 452 kcal on strength days</div>
+        </div>
+        <div class="if-card">
+          <div class="cal-lbl">Eating Window</div>
+          <div class="if-win">
+            <div class="if-time">12:00 PM</div>
+            <div class="if-arr">&#8594;</div>
+            <div class="if-time">8:00 PM</div>
+          </div>
+          <div class="if-note">8-hour window &middot; fast until noon &middot; 3 meals</div>
+        </div>
+      </div>
+      <div class="macro-wrap">
+        <div class="macro-row">
+          <div class="m-lbl p">Protein</div>
+          <div class="m-track"><div class="m-fill p" data-w="75"></div></div>
+          <div class="m-amt" style="color:var(--green)">233g</div>
+        </div>
+        <div class="macro-row">
+          <div class="m-lbl c">Carbs</div>
+          <div class="m-track"><div class="m-fill c" data-w="100"></div></div>
+          <div class="m-amt" style="color:var(--cyan)">339g</div>
+        </div>
+        <div class="macro-row">
+          <div class="m-lbl f">Fat</div>
+          <div class="m-track"><div class="m-fill f" data-w="40"></div></div>
+          <div class="m-amt" style="color:var(--amber)">85g</div>
+        </div>
+      </div>
+      <div class="meal-grid">
+        <div class="meal-card">
+          <div class="meal-time">12:00 PM &mdash; Meal 1</div>
+          <div class="meal-name">Lunch (Largest)</div>
+          <div class="meal-pills"><span class="pill p">P 93g</span><span class="pill c">C 145g</span><span class="pill f">F 30g</span></div>
+          <div class="meal-kcal">1,221 <small>kcal</small></div>
+          <div class="meal-sample">8 oz 90/10 ground beef &middot; 1&frac12; cups white rice &middot; mixed greens</div>
+          <details>
+            <summary class="quick-build">Quick Build</summary>
+            <div class="qb-body">
+              <div class="qb-ing">228g (8 oz) 90/10 ground beef</div>
+              <div class="qb-ing">195g cooked white rice (1&frac12; cups)</div>
+              <div class="qb-ing">60g mixed greens</div>
+              <div class="qb-prep">Brown beef over med-high heat 6&ndash;7 min, season with salt, pepper, garlic powder. Plate over rice, top with greens. Done in under 10 min.</div>
+            </div>
+          </details>
+        </div>
+        <div class="meal-card">
+          <div class="meal-time">4:00 PM &mdash; Meal 2</div>
+          <div class="meal-name">Mid-Afternoon</div>
+          <div class="meal-pills"><span class="pill p">P 82g</span><span class="pill c">C 109g</span><span class="pill f">F 34g</span></div>
+          <div class="meal-kcal">1,069 <small>kcal</small></div>
+          <div class="meal-sample">2 cans chunk light tuna &middot; whole grain crackers &middot; apple</div>
+          <details>
+            <summary class="quick-build">Quick Build</summary>
+            <div class="qb-body">
+              <div class="qb-ing">284g (2 &times; 5 oz cans) chunk light tuna, drained</div>
+              <div class="qb-ing">30g whole grain crackers (~10 crackers)</div>
+              <div class="qb-ing">182g (1 medium) apple</div>
+              <div class="qb-prep">Drain tuna, season with black pepper. Serve with crackers and apple on the side. No cooking required &mdash; prep in 2 min.</div>
+            </div>
+          </details>
+        </div>
+        <div class="meal-card">
+          <div class="meal-time">7:30 PM &mdash; Meal 3</div>
+          <div class="meal-name">Dinner</div>
+          <div class="meal-pills"><span class="pill p">P 58g</span><span class="pill c">C 86g</span><span class="pill f">F 21g</span></div>
+          <div class="meal-kcal">763 <small>kcal</small></div>
+          <div class="meal-sample">6 oz 93/7 ground beef &middot; large salad &middot; 1 tbsp olive oil</div>
+          <details>
+            <summary class="quick-build">Quick Build</summary>
+            <div class="qb-body">
+              <div class="qb-ing">170g (6 oz) 93/7 ground beef</div>
+              <div class="qb-ing">100g mixed greens / salad</div>
+              <div class="qb-ing">14g (1 tbsp) olive oil</div>
+              <div class="qb-prep">Brown beef 5&ndash;6 min, season simply. Build salad, drizzle olive oil. Light dinner to close the eating window.</div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div><!-- /np-s -->
+
+    <!-- ── CARDIO DAY ── -->
+    <div class="npanel" id="np-c">
+      <div class="nutr-top">
+        <div class="cal-card" style="border-color:rgba(34,211,238,.25)">
+          <div class="cal-lbl">Daily Calories</div>
+          <div class="cal-val">2,794 <small>kcal</small></div>
+          <div class="cal-sub">TDEE 3,505 &middot; deficit 711 kcal on cardio days</div>
+        </div>
+        <div class="if-card">
+          <div class="cal-lbl">Eating Window</div>
+          <div class="if-win">
+            <div class="if-time">12:00 PM</div>
+            <div class="if-arr">&#8594;</div>
+            <div class="if-time">8:00 PM</div>
+          </div>
+          <div class="if-note">8-hour window &middot; fast until noon &middot; 3 meals</div>
+        </div>
+      </div>
+      <div class="macro-wrap">
+        <div class="macro-row">
+          <div class="m-lbl p">Protein</div>
+          <div class="m-track"><div class="m-fill p" data-w="75"></div></div>
+          <div class="m-amt" style="color:var(--green)">233g</div>
+        </div>
+        <div class="macro-row">
+          <div class="m-lbl c">Carbs</div>
+          <div class="m-track"><div class="m-fill c" data-w="76"></div></div>
+          <div class="m-amt" style="color:var(--cyan)">257g</div>
+        </div>
+        <div class="macro-row">
+          <div class="m-lbl f">Fat</div>
+          <div class="m-track"><div class="m-fill f" data-w="44"></div></div>
+          <div class="m-amt" style="color:var(--amber)">93g</div>
+        </div>
+      </div>
+      <div class="meal-grid">
+        <div class="meal-card">
+          <div class="meal-time">12:00 PM &mdash; Meal 1</div>
+          <div class="meal-name">Lunch (Largest)</div>
+          <div class="meal-pills"><span class="pill p">P 93g</span><span class="pill c">C 112g</span><span class="pill f">F 33g</span></div>
+          <div class="meal-kcal">1,118 <small>kcal</small></div>
+          <div class="meal-sample">8 oz lean ground turkey &middot; 1&frac12; cups rice &middot; roasted peppers</div>
+          <details>
+            <summary class="quick-build">Quick Build</summary>
+            <div class="qb-body">
+              <div class="qb-ing">228g (8 oz) lean ground turkey</div>
+              <div class="qb-ing">195g cooked white rice (1&frac12; cups)</div>
+              <div class="qb-ing">85g roasted bell peppers (pre-roasted or jarred)</div>
+              <div class="qb-prep">Cook turkey until no pink, ~7 min. Mix with rice and peppers. Season with garlic powder and black pepper.</div>
+            </div>
+          </details>
+        </div>
+        <div class="meal-card">
+          <div class="meal-time">4:00 PM &mdash; Meal 2</div>
+          <div class="meal-name">Mid-Afternoon</div>
+          <div class="meal-pills"><span class="pill p">P 82g</span><span class="pill c">C 79g</span><span class="pill f">F 37g</span></div>
+          <div class="meal-kcal">978 <small>kcal</small></div>
+          <div class="meal-sample">Whey protein shake (40g) &middot; 1 cup oatmeal &middot; banana</div>
+          <details>
+            <summary class="quick-build">Quick Build</summary>
+            <div class="qb-body">
+              <div class="qb-ing">40g whey protein powder (shaken with water)</div>
+              <div class="qb-ing">81g (1 cup dry) rolled oats, cooked</div>
+              <div class="qb-ing">118g (1 medium) banana, sliced on oats</div>
+              <div class="qb-prep">Cook oats 3&ndash;5 min. Mix shake separately. Slice banana on oatmeal. Quick carb + protein load post-cardio.</div>
+            </div>
+          </details>
+        </div>
+        <div class="meal-card">
+          <div class="meal-time">7:30 PM &mdash; Meal 3</div>
+          <div class="meal-name">Dinner</div>
+          <div class="meal-pills"><span class="pill p">P 58g</span><span class="pill c">C 65g</span><span class="pill f">F 23g</span></div>
+          <div class="meal-kcal">698 <small>kcal</small></div>
+          <div class="meal-sample">6 oz lean ground turkey &middot; roasted broccoli &amp; zucchini</div>
+          <details>
+            <summary class="quick-build">Quick Build</summary>
+            <div class="qb-body">
+              <div class="qb-ing">170g (6 oz) lean ground turkey</div>
+              <div class="qb-ing">150g broccoli florets</div>
+              <div class="qb-ing">130g (1 medium) zucchini, sliced</div>
+              <div class="qb-prep">Cook turkey. Steam or saut&eacute; vegetables 5&ndash;6 min until tender. Season with garlic powder, salt, and pepper. Simple clean close.</div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div><!-- /np-c -->
+
+    <!-- ── REST DAY ── -->
+    <div class="npanel" id="np-r">
+      <div class="nutr-top">
+        <div class="cal-card" style="border-color:rgba(251,191,36,.25)">
+          <div class="cal-lbl">Daily Calories</div>
+          <div class="cal-val">2,477 <small>kcal</small></div>
+          <div class="cal-sub">TDEE 3,505 &middot; deficit 1,028 kcal &middot; lowest carb day</div>
+        </div>
+        <div class="if-card">
+          <div class="cal-lbl">Eating Window</div>
+          <div class="if-win">
+            <div class="if-time">12:00 PM</div>
+            <div class="if-arr">&#8594;</div>
+            <div class="if-time">8:00 PM</div>
+          </div>
+          <div class="if-note">8-hour window &middot; lowest carb day of the week &middot; 3 meals</div>
+        </div>
+      </div>
+      <div class="macro-wrap">
+        <div class="macro-row">
+          <div class="m-lbl p">Protein</div>
+          <div class="m-track"><div class="m-fill p" data-w="75"></div></div>
+          <div class="m-amt" style="color:var(--green)">233g</div>
+        </div>
+        <div class="macro-row">
+          <div class="m-lbl c">Carbs</div>
+          <div class="m-track"><div class="m-fill c" data-w="50"></div></div>
+          <div class="m-amt" style="color:var(--cyan)">170g</div>
+        </div>
+        <div class="macro-row">
+          <div class="m-lbl f">Fat</div>
+          <div class="m-track"><div class="m-fill f" data-w="46"></div></div>
+          <div class="m-amt" style="color:var(--amber)">96g</div>
+        </div>
+      </div>
+      <div class="meal-grid">
+        <div class="meal-card">
+          <div class="meal-time">12:00 PM &mdash; Meal 1</div>
+          <div class="meal-name">Lunch (Largest)</div>
+          <div class="meal-pills"><span class="pill p">P 93g</span><span class="pill c">C 78g</span><span class="pill f">F 34g</span></div>
+          <div class="meal-kcal">991 <small>kcal</small></div>
+          <div class="meal-sample">2 cans tuna &middot; 2 cups rice &middot; olive oil &middot; cucumber</div>
+          <details>
+            <summary class="quick-build">Quick Build</summary>
+            <div class="qb-body">
+              <div class="qb-ing">284g (2 cans) chunk light tuna, drained</div>
+              <div class="qb-ing">260g cooked white rice (2 cups)</div>
+              <div class="qb-ing">14g (1 tbsp) olive oil &middot; 120g cucumber, sliced</div>
+              <div class="qb-prep">Drain tuna, plate over rice. Drizzle olive oil. Slice cucumber alongside. Season with pepper. No heat required.</div>
+            </div>
+          </details>
+        </div>
+        <div class="meal-card">
+          <div class="meal-time">4:00 PM &mdash; Meal 2</div>
+          <div class="meal-name">Mid-Afternoon</div>
+          <div class="meal-pills"><span class="pill p">P 82g</span><span class="pill c">C 49g</span><span class="pill f">F 38g</span></div>
+          <div class="meal-kcal">867 <small>kcal</small></div>
+          <div class="meal-sample">6 oz lean ground turkey &middot; 1 medium sweet potato</div>
+          <details>
+            <summary class="quick-build">Quick Build</summary>
+            <div class="qb-body">
+              <div class="qb-ing">170g (6 oz) lean ground turkey</div>
+              <div class="qb-ing">180g (1 medium) sweet potato</div>
+              <div class="qb-prep">Microwave sweet potato 5&ndash;7 min or bake 45 min at 400&deg;F. Cook turkey in parallel. Season turkey with garlic powder. Simple and filling.</div>
+            </div>
+          </details>
+        </div>
+        <div class="meal-card">
+          <div class="meal-time">7:30 PM &mdash; Meal 3</div>
+          <div class="meal-name">Dinner</div>
+          <div class="meal-pills"><span class="pill p">P 58g</span><span class="pill c">C 43g</span><span class="pill f">F 24g</span></div>
+          <div class="meal-kcal">619 <small>kcal</small></div>
+          <div class="meal-sample">6 oz 93/7 ground beef &middot; large salad &middot; olive oil</div>
+          <details>
+            <summary class="quick-build">Quick Build</summary>
+            <div class="qb-body">
+              <div class="qb-ing">170g (6 oz) 93/7 ground beef</div>
+              <div class="qb-ing">100g mixed greens</div>
+              <div class="qb-ing">14g (1 tbsp) olive oil</div>
+              <div class="qb-prep">Brown beef 5&ndash;6 min, season simply. Dress greens with olive oil. Rest day dinner: lean protein, good fat, minimal carbs.</div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div><!-- /np-r -->
+
+    <!-- ── SHOPPING LIST ── -->
+    <div class="npanel" id="np-shop">
+      <div class="shop-header">
+        <div class="shop-note">Weekly grocery list &middot; 4 strength + 2 cardio + 1 rest day &middot; Quantities rounded up to practical purchase sizes &middot; All meals dairy-free</div>
+      </div>
+      <div class="shop-cats">
+        <div class="shop-cat">
+          <div class="shop-cat-hd">Proteins</div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Ground beef, 90/10 or 93/7</div><div class="shop-item-meals">Str M1, Str M3, Rest M3</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">3 lb</div><div class="shop-item-unit">~2 pkgs 1.5 lb</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Lean ground turkey (93/7)</div><div class="shop-item-meals">Str M1 (alt), Cardio M1, Cardio M3, Rest M2</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">3 lb</div><div class="shop-item-unit">~2 pkgs 1.5 lb</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Chunk light tuna, canned (5 oz)</div><div class="shop-item-meals">Str M2 (&times;4), Cardio M2 (alt), Rest M1</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">12 cans</div><div class="shop-item-unit">2 &times; 6-pk or bulk</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Whey protein powder</div><div class="shop-item-meals">Cardio M2 (&times;2)</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">1 container</div><div class="shop-item-unit">~3 servings/wk</div></div>
+          </div>
+        </div>
+        <div class="shop-cat">
+          <div class="shop-cat-hd">Carbohydrates</div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">White rice (long grain or jasmine)</div><div class="shop-item-meals">Str M1, Cardio M1, Rest M1</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">5 lb bag</div><div class="shop-item-unit">lasts ~2 weeks</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Whole grain crackers</div><div class="shop-item-meals">Str M2, Cardio M2 (alt)</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">2 boxes</div><div class="shop-item-unit">~30g/serving</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Rolled oats (old fashioned)</div><div class="shop-item-meals">Cardio M2 (&times;2)</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">1 canister</div><div class="shop-item-unit">42 oz standard</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Sweet potatoes</div><div class="shop-item-meals">Rest M2, Cardio M2 (alt)</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">3 medium</div><div class="shop-item-unit">~180g each</div></div>
+          </div>
+        </div>
+        <div class="shop-cat">
+          <div class="shop-cat-hd">Produce</div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Mixed greens / salad mix</div><div class="shop-item-meals">Str M1, Str M3, Rest M3</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">2 bags (10 oz)</div><div class="shop-item-unit">~740g needed</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Cucumber</div><div class="shop-item-meals">Rest M1</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">1&ndash;2 medium</div><div class="shop-item-unit">120g/use</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Apples</div><div class="shop-item-meals">Str M2, Cardio M2 (alt)</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">5&ndash;6 apples</div><div class="shop-item-unit">or 1 bag</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Bananas</div><div class="shop-item-meals">Cardio M2 (&times;2)</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">3 bananas</div><div class="shop-item-unit">118g each</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Bell peppers (red or yellow)</div><div class="shop-item-meals">Cardio M1 (&times;2), Str M1 (alt)</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">3 peppers</div><div class="shop-item-unit">85g/serving</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Broccoli</div><div class="shop-item-meals">Cardio M3 (&times;2)</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">1 large head</div><div class="shop-item-unit">150g/serving</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Zucchini</div><div class="shop-item-meals">Cardio M3 (&times;2)</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">2 medium</div><div class="shop-item-unit">130g each</div></div>
+          </div>
+        </div>
+        <div class="shop-cat">
+          <div class="shop-cat-hd">Pantry</div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Extra virgin olive oil</div><div class="shop-item-meals">Str M3, Rest M1, Rest M3</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">1 bottle</div><div class="shop-item-unit">16.9 oz (500 ml)</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Salt (kosher or sea salt)</div><div class="shop-item-meals">All meals</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">Pantry staple</div><div class="shop-item-unit">restock as needed</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Black pepper</div><div class="shop-item-meals">All meals</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">Pantry staple</div><div class="shop-item-unit">restock as needed</div></div>
+          </div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">Garlic powder</div><div class="shop-item-meals">Most savory meals</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">Pantry staple</div><div class="shop-item-unit">restock as needed</div></div>
+          </div>
+        </div>
+        <div class="shop-cat">
+          <div class="shop-cat-hd">Dairy / Other</div>
+          <div class="shop-item">
+            <div><div class="shop-item-name">None required</div><div class="shop-item-meals">All meals are dairy-free by design</div></div>
+            <div class="shop-item-right"><div class="shop-item-qty">&mdash;</div><div class="shop-item-unit"></div></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /np-shop -->
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     BODY COMPOSITION
+════════════════════════════════════════════════════════════════ -->
+<section id="composition" aria-label="Body composition snapshot">
+  <div class="container">
+    <div class="section-label fade-up">InBody Assessment &middot; May 27, 2026</div>
+    <h2 class="section-title fade-up">Body Composition</h2>
+    <div class="stat-grid">
+      <div class="stat-card g fade-up">
+        <div class="sc-lbl">Weight</div>
+        <div class="sc-val">262.6 <small>lb</small></div>
+        <div class="sc-target">Target <span>248.7 lb</span></div>
+        <div class="sc-delta">Goal &mdash; 13.9 lb remaining</div>
+      </div>
+      <div class="stat-card g fade-up">
+        <div class="sc-lbl">Lean Body Mass</div>
+        <div class="sc-val">211.4 <small>lb</small></div>
+        <div class="sc-target">Target <span>Maintain 211+ lb</span></div>
+        <div class="sc-delta">Hold steady &mdash; 0 lb to lose</div>
+      </div>
+      <div class="stat-card g fade-up">
+        <div class="sc-lbl">Skeletal Muscle</div>
+        <div class="sc-val">122.4 <small>lb</small></div>
+        <div class="sc-target">Target <span>Maintain 122+ lb</span></div>
+        <div class="sc-delta">Hold steady &mdash; 0 lb to lose</div>
+      </div>
+      <div class="stat-card c fade-up">
+        <div class="sc-lbl">Body Fat Mass</div>
+        <div class="sc-val">57.5 <small>lb</small></div>
+        <div class="sc-target">Target <span>43.6 lb</span></div>
+        <div class="sc-delta">Goal &mdash; 13.9 lb remaining</div>
+      </div>
+      <div class="stat-card c fade-up">
+        <div class="sc-lbl">Percent Body Fat</div>
+        <div class="sc-val">19.5 <small>%</small></div>
+        <div class="sc-target">Target <span>~16.6%</span></div>
+        <div class="sc-delta">Goal &mdash; 2.9% remaining</div>
+      </div>
+      <div class="stat-card a fade-up">
+        <div class="sc-lbl">Visceral Fat Level</div>
+        <div class="sc-val">10</div>
+        <div class="sc-target">Target <span>&lt; 9</span></div>
+        <div class="sc-delta">Goal &mdash; 2 levels remaining</div>
+      </div>
+    </div>
+    <div class="comp-bar-wrap fade-up" id="comp-bar-wrap">
+      <div class="comp-bar-lbl">Body composition breakdown &mdash; 262.6 lb total (animated on scroll)</div>
+      <div class="comp-bar">
+        <div class="cb-lean" id="cb-lean">Lean 211.4 lb &nbsp;(80.5%)</div>
+        <div class="cb-fat"  id="cb-fat">Fat 57.5 lb (19.5%)</div>
+      </div>
+      <div class="comp-legend">
+        <span><div class="cl-dot" style="background:var(--green)"></div>Lean Body Mass &middot; 211.4 lb &middot; 80.5%</span>
+        <span><div class="cl-dot" style="background:var(--red)"></div>Body Fat Mass &middot; 57.5 lb &middot; 19.5%</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     3D BODY SCAN
+════════════════════════════════════════════════════════════════ -->
+<section id="bodyscan" aria-label="3D body scan viewer">
+  <div class="bs-wrap">
+    <div class="bs-header">
+      <div><div class="bs-title">3D BODY SCAN</div></div>
+      <div class="bs-date">May 27, 2026 &middot; 18:06 &middot; InBody 570</div>
+    </div>
+    <div class="bs-main">
+
+      <!-- LEFT -->
+      <div class="bs-left">
+        <div class="bs-card">
+          <div class="bs-card-hd">Overview</div>
+          <div class="bs-row"><div class="bs-row-lbl"><svg class="bs-row-ico" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Height</div><div class="bs-row-val">6&prime;3&Prime; (75 in)</div></div>
+          <div class="bs-row"><div class="bs-row-lbl"><svg class="bs-row-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Weight</div><div class="bs-row-val">262.6 lb</div></div>
+          <div class="bs-row"><div class="bs-row-lbl"><svg class="bs-row-ico" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>Body Fat %</div><div class="bs-row-val">19.5 %</div></div>
+          <div class="bs-row"><div class="bs-row-lbl"><svg class="bs-row-ico" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Body Fat Mass</div><div class="bs-row-val">57.5 lb</div></div>
+          <div class="bs-row"><div class="bs-row-lbl"><svg class="bs-row-ico" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Lean Body Mass</div><div class="bs-row-val">211.4 lb</div></div>
+          <div class="bs-row"><div class="bs-row-lbl"><svg class="bs-row-ico" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Skeletal Muscle</div><div class="bs-row-val">122.4 lb</div></div>
+        </div>
+        <div class="bs-card">
+          <div class="bs-card-hd">Body Composition</div>
+          <div class="bs-row"><div class="bs-row-lbl">Total Body Water</div><div class="bs-row-val">97.2 lb</div></div>
+          <div class="bs-row"><div class="bs-row-lbl">Dry Lean Mass</div><div class="bs-row-val">56.7 lb</div></div>
+          <div class="bs-row"><div class="bs-row-lbl">Lean Body Mass</div><div class="bs-row-val">211.4 lb</div></div>
+          <div class="bs-row"><div class="bs-row-lbl">Body Fat Mass</div><div class="bs-row-val">57.5 lb</div></div>
+        </div>
+        <div class="bs-card">
+          <div class="bs-card-hd">Additional Stats</div>
+          <div class="bs-row"><div class="bs-row-lbl">BMI</div><div class="bs-row-val">32.8</div></div>
+          <div class="bs-row"><div class="bs-row-lbl">Visceral Fat Level</div><div class="bs-row-val">10</div></div>
+          <div class="bs-row"><div class="bs-row-lbl">Basal Metabolic Rate</div><div class="bs-row-val">2,124 kcal</div></div>
+          <div class="bs-row"><div class="bs-row-lbl">Waist-Hip Ratio</div><div class="bs-row-val">1.01</div></div>
+          <div class="bs-row"><div class="bs-row-lbl">ECW / TBW</div><div class="bs-row-val">0.369</div></div>
+        </div>
+      </div><!-- /bs-left -->
+
+      <!-- CENTER -->
+      <div class="bs-center">
+        <div class="bs-tabs">
+          <button class="bs-tab act" data-bstab="3dview">3D VIEW</button>
+          <button class="bs-tab" data-bstab="measurements">MEASUREMENTS</button>
+          <button class="bs-tab" data-bstab="composition">COMPOSITION</button>
+        </div>
+        <div class="bs-vp" id="bs-viewport">
+          <canvas id="body-canvas"></canvas>
+          <div id="canvas-loading" class="bs-loading">Loading 3D model&hellip;</div>
+          <!-- toolbar -->
+          <div class="bs-toolbar">
+            <button class="bs-tool act" data-tool="rotate"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Rotate</button>
+            <button class="bs-tool" data-tool="zoom"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>Zoom</button>
+            <button class="bs-tool" data-tool="pan"><svg viewBox="0 0 24 24"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>Pan</button>
+            <button class="bs-tool" data-tool="reset"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.12"/></svg>Reset</button>
+          </div>
+          <!-- view selector -->
+          <div class="bs-views">
+            <button class="bs-view act" data-view="front"><svg viewBox="0 0 18 28"><ellipse cx="9" cy="3.5" rx="3.5" ry="3.5"/><rect x="5.5" y="8" width="7" height="9" rx="2"/><rect x="2" y="8.5" width="3" height="6.5" rx="1.5"/><rect x="13" y="8.5" width="3" height="6.5" rx="1.5"/><rect x="5.5" y="17.5" width="3" height="8" rx="1.5"/><rect x="9.5" y="17.5" width="3" height="8" rx="1.5"/></svg>Front</button>
+            <button class="bs-view" data-view="back"><svg viewBox="0 0 18 28"><ellipse cx="9" cy="3.5" rx="3.5" ry="3.5"/><rect x="5.5" y="8" width="7" height="9" rx="2"/><rect x="2" y="8.5" width="3" height="6.5" rx="1.5"/><rect x="13" y="8.5" width="3" height="6.5" rx="1.5"/><rect x="5.5" y="17.5" width="3" height="8" rx="1.5"/><rect x="9.5" y="17.5" width="3" height="8" rx="1.5"/></svg>Back</button>
+            <button class="bs-view" data-view="left"><svg viewBox="0 0 12 28"><ellipse cx="6" cy="3.5" rx="3.5" ry="3.5"/><rect x="3" y="8" width="6" height="9" rx="2"/><rect x="3" y="17.5" width="3" height="8" rx="1.5"/><rect x="6" y="17.5" width="3" height="8" rx="1.5"/></svg>Left</button>
+            <button class="bs-view" data-view="right"><svg viewBox="0 0 12 28"><ellipse cx="6" cy="3.5" rx="3.5" ry="3.5"/><rect x="3" y="8" width="6" height="9" rx="2"/><rect x="3" y="17.5" width="3" height="8" rx="1.5"/><rect x="6" y="17.5" width="3" height="8" rx="1.5"/></svg>Right</button>
+          </div>
+        </div>
+      </div><!-- /bs-center -->
+
+      <!-- RIGHT -->
+      <div class="bs-right">
+        <div class="bs-card">
+          <div class="bs-card-hd">Measurements</div>
+          <div class="bs-meas-row"><span class="bs-meas-name">Chest</span><span class="bs-meas-val">47.5 in</span></div>
+          <div class="bs-meas-row"><span class="bs-meas-name">Waist</span><span class="bs-meas-val">42.5 in</span></div>
+          <div class="bs-meas-row"><span class="bs-meas-name">Hips</span><span class="bs-meas-val">42.0 in</span></div>
+          <div class="bs-sil-wrap">
+            <svg viewBox="0 0 240 210" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+              <ellipse cx="62" cy="18" rx="14" ry="16" fill="#1e2032"/>
+              <rect x="57" y="33" width="10" height="11" rx="2" fill="#1e2032"/>
+              <polygon points="37,44 87,44 89,55 88,80 87,100 84,112 62,115 40,112 37,100 36,80 35,55" fill="#1e2032"/>
+              <polygon points="37,44 28,47 20,52 17,80 22,93 29,85 35,65 39,52" fill="#1e2032"/>
+              <polygon points="87,44 96,47 104,52 107,80 102,93 95,85 89,65 85,52" fill="#1e2032"/>
+              <polygon points="47,115 41,115 37,170 42,174 50,174 54,170 54,115" fill="#1e2032"/>
+              <polygon points="77,115 83,115 87,170 82,174 74,174 70,170 70,115" fill="#1e2032"/>
+              <ellipse cx="42" cy="177" rx="9" ry="4" fill="#1e2032"/>
+              <ellipse cx="80" cy="177" rx="9" ry="4" fill="#1e2032"/>
+              <line x1="88" y1="62" x2="128" y2="62" stroke="#3b82f6" stroke-dasharray="4,3" stroke-width="1.2"/>
+              <circle cx="128" cy="62" r="3.5" fill="#3b82f6"/>
+              <text x="135" y="66" fill="#fafafa" font-size="12" font-weight="700" font-family="system-ui,sans-serif">47.5&#8243;</text>
+              <line x1="87" y1="83" x2="128" y2="83" stroke="#3b82f6" stroke-dasharray="4,3" stroke-width="1.2"/>
+              <circle cx="128" cy="83" r="3.5" fill="#3b82f6"/>
+              <text x="135" y="87" fill="#fafafa" font-size="12" font-weight="700" font-family="system-ui,sans-serif">42.5&#8243;</text>
+              <line x1="87" y1="104" x2="128" y2="104" stroke="#3b82f6" stroke-dasharray="4,3" stroke-width="1.2"/>
+              <circle cx="128" cy="104" r="3.5" fill="#3b82f6"/>
+              <text x="135" y="108" fill="#fafafa" font-size="12" font-weight="700" font-family="system-ui,sans-serif">42.0&#8243;</text>
+              <text x="135" y="198" fill="#52525b" font-size="9" font-family="system-ui,sans-serif">All measurements in inches</text>
+            </svg>
+          </div>
+        </div>
+        <div class="bs-card">
+          <div class="bs-card-hd">Segmental Analysis</div>
+          <div class="bs-seg-legend">
+            <span class="bs-seg-leg-lbl"><span class="bs-seg-dot lean"></span>Lean Mass (% Ideal)</span>
+            <span class="bs-seg-leg-lbl"><span class="bs-seg-dot fat"></span>Fat Mass (% Ideal)</span>
+          </div>
+          <table class="seg-tbl">
+            <thead><tr><th>Segment</th><th>Lean</th><th>Fat</th></tr></thead>
+            <tbody>
+              <tr><td>Right Arm</td><td>128.1%</td><td>164.6%</td></tr>
+              <tr><td>Left Arm</td><td>121.9%</td><td>177.9%</td></tr>
+              <tr><td>Trunk</td><td>117.4%</td><td>111.5%</td></tr>
+              <tr><td>Right Leg</td><td>112.6%</td><td>136.5%</td></tr>
+              <tr><td>Left Leg</td><td>112.6%</td><td>134.3%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="bs-card">
+          <div class="bs-card-hd">Composition Overlay</div>
+          <div style="margin-bottom:10px;font-size:12px;color:var(--muted)">Fat layer visible at 19.5% BF. WHR 1.01 &mdash; abdominal region shows central adiposity.</div>
+          <button class="fat-toggle-btn fat-on" id="fat-toggle">Show Lean Body Only</button>
+        </div>
+      </div><!-- /bs-right -->
+
+    </div>
+    <div class="bs-footer-bar">Data from InBody 570 &middot; Test Date: May 27, 2026 18:06</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     WEEKLY TRAINING PLAN
+════════════════════════════════════════════════════════════════ -->
+<section id="training" aria-label="Weekly training plan">
+  <div class="container">
+    <div class="section-label fade-up">4 Strength &middot; 2 Cardio &middot; 1 Rest</div>
+    <h2 class="section-title fade-up">Weekly Training Plan</h2>
+    <div class="day-grid" id="day-grid"><!-- JS --></div>
+    <p class="training-hint fade-up">Click any day to view the full session details &amp; exercises</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════════════════════════════ -->
+<footer>
+  InBody Baseline: May 27, 2026 &middot; Fitness Dashboard &middot; Body Recomposition Phase &middot; Lifetime Fitness, Chicago River North
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL OVERLAY
+════════════════════════════════════════════════════════════════ -->
+<div id="overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title-el">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modal-title-el"></div>
+        <div class="modal-sub"   id="modal-sub-el"></div>
+      </div>
+      <button class="modal-close" id="modal-close-btn" aria-label="Close">&times;</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+
+<style>
+/* Pass-3 correction: quick-build class sits on <summary>, not its container */
+summary.quick-build {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--blue); cursor: pointer; list-style: none;
+  transition: color var(--ease);
+}
+summary.quick-build::-webkit-details-marker { display: none; }
+summary.quick-build::before { content: '+'; font-size: 14px; font-weight: 900; }
+details[open] > summary.quick-build::before { content: '\2212'; }
+.qb-body { margin-top: 8px; }
+</style>
+
+<script>
+(function () {
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════════════ */
+const START_DATE = new Date('2026-05-27');
+const TODAY      = new Date();
+const DAY_NAMES  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+const WORKOUTS = {
+  0: {
+    type: 'strength', name: 'Lower Body Power', tag: 'Squat Focus', dur: '60–75 min',
+    exercises: [
+      { name: 'Back Squat',            sets: 4, reps: '4–6',   load: '85% 1RM',   cue: 'Belt optional, brace hard' },
+      { name: 'Romanian Deadlift',     sets: 3, reps: '8–10',  load: 'Mod-Heavy', cue: 'Hip hinge, slight knee bend' },
+      { name: 'Bulgarian Split Squat', sets: 3, reps: '8/leg',      load: 'Moderate',  cue: 'Torso upright, front foot forward' },
+      { name: 'Leg Press',             sets: 3, reps: '10–12', load: 'Moderate',  cue: "Full ROM, don't lock out" },
+      { name: 'Standing Calf Raise',   sets: 4, reps: '15–20', load: 'Moderate',  cue: 'Pause at bottom stretch' },
+      { name: 'Ab Wheel Rollout',      sets: 3, reps: '8–12',  load: 'BW',        cue: "Brace core, don't hyperextend" },
+    ]
+  },
+  1: {
+    type: 'cardio', name: 'Tempo Run', tag: 'Threshold Work', dur: '40 min',
+    zone: 'Zone 3–4', zoneKey: 'z34',
+    steps: ['10 min easy warm-up (Zone 2)','20 min threshold pace — comfortably hard, 7–8/10 effort','10 min easy cool-down'],
+    target: '~8:30–9:00 min/mile at threshold',
+    note: 'Chicago lakefront path is ideal. Focus on breathing rhythm.',
+  },
+  2: {
+    type: 'strength', name: 'Upper Body Power', tag: 'Push/Pull Strength', dur: '60–75 min',
+    exercises: [
+      { name: 'Barbell Bench Press',  sets: 4, reps: '4–6',   load: '85% 1RM',  cue: 'Retract scapula, controlled descent' },
+      { name: 'Weighted Pull-Up',     sets: 4, reps: '4–6',   load: '+25–45 lb', cue: 'Dead hang to chin over bar' },
+      { name: 'Overhead Press',       sets: 3, reps: '6–8',   load: 'Mod-Heavy',cue: 'Brace core, no lumbar arch' },
+      { name: 'Pendlay Row',          sets: 3, reps: '6–8',   load: 'Mod-Heavy',cue: 'Bar to lower chest, explosive pull' },
+      { name: 'Incline DB Press',     sets: 3, reps: '8–10',  load: 'Moderate', cue: '30–45° incline' },
+      { name: 'Face Pull',            sets: 3, reps: '15–20', load: 'Light',    cue: 'External rotation at peak' },
+    ]
+  },
+  3: {
+    type: 'cardio', name: 'Zone 2 + Cross Training', tag: 'Aerobic Base', dur: '50 min',
+    zone: 'Zone 2', zoneKey: 'z2',
+    steps: ['20 min easy treadmill or outdoor run (Zone 2)','15 min row machine — steady Zone 2 pace','15 min assault bike — conversational effort'],
+    target: 'Conversational pace throughout',
+    note: "Prioritizes fat oxidation. Use Lifetime's row + assault bike.",
+  },
+  4: {
+    type: 'strength', name: 'Lower Body Hypertrophy', tag: 'Hinge Focus', dur: '65–80 min',
+    exercises: [
+      { name: 'Conventional Deadlift', sets: 4, reps: '5–6',   load: '80–85% 1RM', cue: 'Bar stays close, drive through floor' },
+      { name: 'Barbell Hip Thrust',    sets: 4, reps: '10–12', load: 'Mod-Heavy',  cue: 'Full hip extension, squeeze top' },
+      { name: 'Hack Squat',            sets: 3, reps: '10–12', load: 'Moderate',   cue: 'High foot placement for glute bias' },
+      { name: 'Nordic Hamstring Curl', sets: 3, reps: '6–8',   load: 'BW/Asst.',   cue: 'Slow eccentric, control descent' },
+      { name: 'Single-Leg RDL',        sets: 3, reps: '10/leg',     load: 'Light-Mod',  cue: 'Hip hinge, control descent' },
+      { name: 'Hanging Leg Raise',     sets: 3, reps: '12–15', load: 'BW',         cue: 'Control the swing, no kip' },
+    ]
+  },
+  5: {
+    type: 'strength', name: 'Upper Body Hypertrophy', tag: 'Volume + Arms', dur: '65–75 min',
+    exercises: [
+      { name: 'Cable Row (Wide Grip)',    sets: 4, reps: '10–12', load: 'Moderate', cue: 'Full stretch, squeeze at peak' },
+      { name: 'Chest-Supported DB Row',  sets: 3, reps: '10–12', load: 'Moderate', cue: 'No body English' },
+      { name: 'Dumbbell Shoulder Press', sets: 4, reps: '10–12', load: 'Moderate', cue: 'Slight forward lean' },
+      { name: 'Lat Pulldown',            sets: 3, reps: '10–12', load: 'Moderate', cue: 'Lean back slightly, pull to chest' },
+      { name: 'EZ Bar Curl',             sets: 3, reps: '10–12', load: 'Moderate', cue: 'Elbows fixed, no swing' },
+      { name: 'Tricep Rope Pushdown',    sets: 3, reps: '12–15', load: 'Moderate', cue: 'Spread rope at bottom' },
+      { name: 'Lateral Raise',           sets: 3, reps: '15–20', load: 'Light',    cue: 'Lead with elbows, control descent' },
+    ]
+  },
+  6: {
+    type: 'rest', name: 'Recovery Run', tag: 'Optional / Active Recovery', dur: '45–60 min',
+    zone: 'Zone 1–2', zoneKey: 'z2',
+    steps: ['Full easy run at conversational pace','No pace targets — this is active recovery','Stop early if you feel fatigued or heavy'],
+    target: '10:00–11:00 min/mile easy',
+    note: 'Optional. Can swap for cold plunge + sauna at Lifetime instead.',
+  },
+};
+
+const DAILY_FOCUS = {
+  0: { type:'strength', session:'Lower Body Power — Squat Focus',           nutTab:'s', nutLabel:'Strength Day', cue:'Front-load protein at noon — 93g in Meal 1. 3,053 kcal total. Carbs fuel the squat session.' },
+  1: { type:'cardio',   session:'Tempo Run — Threshold Work',               nutTab:'c', nutLabel:'Cardio Day',   cue:'Moderate calories today (2,794). Eat your noon meal before the run, not after.' },
+  2: { type:'strength', session:'Upper Body Power — Push/Pull Strength',    nutTab:'s', nutLabel:'Strength Day', cue:'Bench and pull-up day. Hit 233g protein. High carb window supports peak upper output.' },
+  3: { type:'cardio',   session:'Zone 2 + Cross Training — Aerobic Base',   nutTab:'c', nutLabel:'Cardio Day',   cue:'Zone 2 prioritizes fat oxidation. Keep effort conversational — you should hold a full sentence.' },
+  4: { type:'strength', session:'Lower Body Hypertrophy — Hinge Focus',     nutTab:'s', nutLabel:'Strength Day', cue:'Deadlift day. Largest meal at noon, 3,053 kcal. Use Lifetime recovery tools post-session.' },
+  5: { type:'strength', session:'Upper Body Hypertrophy — Volume + Arms',   nutTab:'s', nutLabel:'Strength Day', cue:'Volume day — moderate load, high reps. Focus on full ROM. Protein stays fixed at 233g.' },
+  6: { type:'rest',     session:'Recovery Run — Optional / Active Recovery',nutTab:'r', nutLabel:'Rest Day',     cue:"Lowest carb day (170g). Prioritize sleep, cold plunge, and passive recovery. Let the week's work absorb." },
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════════════════ */
+function springEase(t) {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI / 3)) + 1;
+}
+
+function countUp(el, target, dec, duration) {
+  const start = performance.now();
+  function step(now) {
+    const raw    = Math.min((now - start) / duration, 1);
+    const eased  = springEase(raw);
+    const val    = target * eased;
+    el.textContent = dec > 0 ? val.toFixed(dec) : Math.round(val).toLocaleString();
+    if (raw < 1) requestAnimationFrame(step);
+    else el.textContent = dec > 0 ? target.toFixed(dec) : target.toLocaleString();
+  }
+  requestAnimationFrame(step);
+}
+
+function getDayOfWeek() {
+  return (TODAY.getDay() + 6) % 7; // Mon=0 … Sun=6
+}
+
+function getProgressInfo() {
+  const days  = Math.max(0, Math.floor((TODAY - START_DATE) / 86400000));
+  const weeks = days / 7;
+  const pct   = Math.min((weeks / 11) * 100, 100);
+  const cur   = Math.min(Math.max(Math.ceil(weeks), 1), 11);
+  return { weeks, pct, cur };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ROADMAP
+═══════════════════════════════════════════════════════════════ */
+function buildRoadmap() {
+  const { weeks, pct, cur } = getProgressInfo();
+
+  setTimeout(() => {
+    document.getElementById('rm-fill').style.width = Math.max(pct, 0.4).toFixed(1) + '%';
+  }, 320);
+
+  const MILES = [
+    { wk:0,  lbl:'Start', wt:'262.6', dt:'May 27' },
+    { wk:3,  lbl:'Wk 3',  wt:'258.9', dt:'Jun 17' },
+    { wk:6,  lbl:'Wk 6',  wt:'255.1', dt:'Jul 8'  },
+    { wk:9,  lbl:'Wk 9',  wt:'251.4', dt:'Jul 29' },
+    { wk:11, lbl:'Goal',  wt:'248.7', dt:'Aug 12' },
+  ];
+
+  const mc = document.getElementById('rm-miles');
+  MILES.forEach(m => {
+    const done    = weeks >= m.wk;
+    const current = Math.abs(weeks - m.wk) < 0.75;
+    const div = document.createElement('div');
+    div.className = 'rm-m' + (done ? ' done' : '') + (current ? ' current' : '');
+    div.innerHTML =
+      '<div class="rm-callout">Week ' + cur + ' — on track</div>' +
+      '<div class="rm-m-dot"></div>' +
+      '<div class="rm-m-wk">' + m.lbl + '</div>' +
+      '<div class="rm-m-wt">' + m.wt + ' lb</div>' +
+      '<div class="rm-m-dt">' + m.dt + '</div>';
+    mc.appendChild(div);
+  });
+
+  const sc = document.getElementById('rm-squares');
+  for (let w = 1; w <= 11; w++) {
+    const exp = (262.6 - w * 1.25).toFixed(1);
+    const sq  = document.createElement('div');
+    sq.className  = 'rm-sq' + (w < cur ? ' done' : w === cur ? ' current' : '');
+    sq.dataset.tip = 'Wk ' + w + ': ~' + exp + ' lb';
+    sc.appendChild(sq);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════════════════════════ */
+function initHero() {
+  const { pct, cur } = getProgressInfo();
+
+  setTimeout(() => {
+    const fill = document.getElementById('prog-fill');
+    if (fill) fill.style.width = Math.max(pct, 0.5).toFixed(1) + '%';
+  }, 350);
+
+  const wkLbl  = document.getElementById('prog-wk-lbl');
+  const pctLbl = document.getElementById('prog-pct-lbl');
+  if (wkLbl)  wkLbl.textContent  = 'Week ' + cur + ' of 11';
+  if (pctLbl) pctLbl.textContent = Math.round(pct) + '% complete';
+
+  setTimeout(() => {
+    document.querySelectorAll('[data-count]').forEach(el => {
+      const target = parseFloat(el.dataset.count);
+      const dec    = parseInt(el.dataset.dec || '0', 10);
+      countUp(el, target, dec, 1500);
+    });
+  }, 450);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TODAY'S FOCUS
+═══════════════════════════════════════════════════════════════ */
+function initTodayFocus() {
+  const dow   = getDayOfWeek();
+  const focus = DAILY_FOCUS[dow];
+  const tag  = document.getElementById('tc-tag');
+  const sess = document.getElementById('tc-session');
+  const nut  = document.getElementById('tc-nut');
+  const cue  = document.getElementById('tc-cue');
+  if (!tag) return;
+  tag.className   = 'tc-tag ' + focus.type;
+  tag.textContent = focus.type.toUpperCase();
+  sess.textContent = focus.session;
+  nut.textContent  = focus.nutLabel;
+  cue.textContent  = focus.cue;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NUTRITION
+═══════════════════════════════════════════════════════════════ */
+function initNutrition() {
+  const dow = getDayOfWeek();
+  activateNutritionTab(DAILY_FOCUS[dow].nutTab);
+
+  const tabsRow = document.querySelector('.nutr-tabs');
+  if (tabsRow) {
+    tabsRow.addEventListener('click', function(e) {
+      const btn = e.target.closest('[data-tab]');
+      if (!btn) return;
+      activateNutritionTab(btn.dataset.tab);
+    });
+  }
+}
+
+function activateNutritionTab(key) {
+  document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.npanel').forEach(p => p.classList.remove('active'));
+
+  const activeTab   = document.querySelector('.tab[data-tab="' + key + '"]');
+  const activePanel = document.getElementById('np-' + key);
+  if (activeTab)   activeTab.classList.add('active');
+  if (activePanel) activePanel.classList.add('active');
+
+  if (key === 'shop') return;
+
+  requestAnimationFrame(function() {
+    if (!activePanel) return;
+    activePanel.querySelectorAll('.m-fill').forEach(function(bar) {
+      bar.style.transition = 'none';
+      bar.style.width = '0%';
+      requestAnimationFrame(function() {
+        setTimeout(function() {
+          bar.style.transition = '';
+          bar.style.width = (bar.dataset.w || '0') + '%';
+        }, 40);
+      });
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BODY COMPOSITION  (IntersectionObserver for bar animation)
+═══════════════════════════════════════════════════════════════ */
+function initComposition() {
+  const wrap = document.getElementById('comp-bar-wrap');
+  if (!wrap) return;
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (!e.isIntersecting) return;
+      var lean = document.getElementById('cb-lean');
+      var fat  = document.getElementById('cb-fat');
+      if (lean) lean.style.width = '80.5%';
+      if (fat)  fat.style.width  = '19.5%';
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.4 });
+  io.observe(wrap);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRAINING DAY GRID
+═══════════════════════════════════════════════════════════════ */
+function buildDayGrid() {
+  var grid = document.getElementById('day-grid');
+  if (!grid) return;
+  var dow = getDayOfWeek();
+
+  DAY_NAMES.forEach(function(name, i) {
+    var w    = WORKOUTS[i];
+    var card = document.createElement('div');
+    card.className  = 'day-card type-' + w.type + (i === dow ? ' is-today' : '');
+    card.dataset.day = i;
+    card.innerHTML  =
+      '<div class="dc-day">' + name.slice(0,3) + '</div>' +
+      '<div class="dc-tag ' + w.type + '">' + w.type.toUpperCase() + '</div>' +
+      '<div class="dc-name">' + w.name + '</div>' +
+      '<div class="dc-sub">'  + w.tag  + '</div>' +
+      '<div class="dc-dur">'  + w.dur  + '</div>';
+    grid.appendChild(card);
+  });
+
+  grid.addEventListener('click', function(e) {
+    var card = e.target.closest('[data-day]');
+    if (card) openModal(parseInt(card.dataset.day, 10));
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL  (event delegation, scale+opacity, backdrop close)
+═══════════════════════════════════════════════════════════════ */
+function initModal() {
+  var overlay = document.getElementById('overlay');
+  if (!overlay) return;
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeModal();
+  });
+
+  var closeBtn = document.getElementById('modal-close-btn');
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+  });
+}
+
+function openModal(dayIdx) {
+  var w     = WORKOUTS[dayIdx];
+  var name  = DAY_NAMES[dayIdx];
+  var title = document.getElementById('modal-title-el');
+  var sub   = document.getElementById('modal-sub-el');
+  var body  = document.getElementById('modal-body');
+  if (!title || !body) return;
+
+  title.textContent = name + ' — ' + w.name;
+  sub.textContent   = w.tag + '  ·  ' + w.dur;
+
+  var html = '';
+
+  if (w.type === 'strength') {
+    html = '<table class="ex-table"><thead><tr><th>#</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Load</th></tr></thead><tbody>';
+    w.exercises.forEach(function(ex, i) {
+      html += '<tr>' +
+        '<td style="color:var(--dim)">' + (i + 1) + '</td>' +
+        '<td><div class="ex-name">' + ex.name + '</div><div class="ex-cue">' + ex.cue + '</div></td>' +
+        '<td style="text-align:center;font-weight:700">' + ex.sets + '</td>' +
+        '<td style="text-align:center;font-weight:700">' + ex.reps + '</td>' +
+        '<td class="ex-load">' + ex.load + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table>' +
+      '<div class="rest-protocol">' +
+        '<div class="rp-title">Rest Protocol (Post-Session)</div>' +
+        '<div class="rp-items">' +
+          '<div class="rp-item"><div class="rp-dot"></div>Cold plunge 10–15 min (50–55°F)</div>' +
+          '<div class="rp-item"><div class="rp-dot"></div>Infrared sauna 20–30 min</div>' +
+          '<div class="rp-item"><div class="rp-dot"></div>Foam roll + static stretch 10 min</div>' +
+        '</div>' +
+      '</div>';
+  } else {
+    var zk    = w.zoneKey || 'z2';
+    var color = zk === 'z34' ? 'var(--amber)' : 'var(--cyan)';
+    html = '<div class="hr-zone ' + zk + '">HR Zone: ' + w.zone + '</div>';
+    html += '<div class="c-steps">';
+    w.steps.forEach(function(s, i) {
+      html += '<div class="c-step">' +
+        '<div class="c-num" style="background:rgba(34,211,238,.1);color:' + color + '">' + (i + 1) + '</div>' +
+        '<div class="c-text">' + s + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    if (w.target) html += '<div style="margin-top:14px;font-size:13px"><span style="color:var(--muted)">Target: </span>' + w.target + '</div>';
+    if (w.note)   html += '<div style="margin-top:8px;font-size:12px;color:var(--muted)">' + w.note + '</div>';
+  }
+
+  body.innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  var overlay = document.getElementById('overlay');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BODY SCAN UI  (toolbar + view buttons via event delegation)
+═══════════════════════════════════════════════════════════════ */
+function initBodyScan() {
+  var bsTabs = document.querySelector('.bs-tabs');
+  if (bsTabs) {
+    bsTabs.addEventListener('click', function(e) {
+      var tab = e.target.closest('[data-bstab]');
+      if (!tab) return;
+      document.querySelectorAll('.bs-tab').forEach(function(t) { t.classList.remove('act'); });
+      tab.classList.add('act');
+    });
+  }
+
+  var vp = document.getElementById('bs-viewport');
+  if (vp) {
+    vp.addEventListener('click', function(e) {
+      var tool = e.target.closest('[data-tool]');
+      if (tool) { handleBsTool(tool.dataset.tool); return; }
+      var view = e.target.closest('[data-view]');
+      if (view) handleBsView(view.dataset.view);
+    });
+  }
+
+  var fatBtn = document.getElementById('fat-toggle');
+  if (fatBtn) {
+    fatBtn.addEventListener('click', function() {
+      var mesh = window._bsFatMesh;
+      if (!mesh) return;
+      var showing = mesh.visible;
+      mesh.visible    = !showing;
+      this.textContent = showing ? 'Show Full Composition' : 'Show Lean Body Only';
+      this.className   = 'fat-toggle-btn ' + (showing ? 'fat-off' : 'fat-on');
+    });
+  }
+
+  loadThreeJS();
+}
+
+function handleBsTool(key) {
+  document.querySelectorAll('[data-tool]').forEach(function(t) { t.classList.remove('act'); });
+  var btn = document.querySelector('[data-tool="' + key + '"]');
+  if (btn) btn.classList.add('act');
+
+  var ctrl = window._bsControls;
+  if (!ctrl) return;
+
+  if (key === 'rotate') { ctrl.autoRotate = !ctrl.autoRotate; ctrl.enableZoom = false; ctrl.enablePan = false; }
+  if (key === 'zoom')   { ctrl.enableZoom = true;  ctrl.enablePan  = false; ctrl.autoRotate = false; }
+  if (key === 'pan')    { ctrl.enablePan  = true;  ctrl.enableZoom = false; ctrl.autoRotate = false; }
+  if (key === 'reset')  {
+    var cam = window._bsCamera;
+    if (cam) {
+      cam.position.set(0, 0.35, 5.0);
+      ctrl.target.set(0, 0, 0);
+      ctrl.autoRotate = true; ctrl.enableZoom = false; ctrl.enablePan = false;
+      ctrl.update();
+    }
+    document.querySelectorAll('[data-view]').forEach(function(v) { v.classList.remove('act'); });
+    var fv = document.querySelector('[data-view="front"]');
+    if (fv) fv.classList.add('act');
+    document.querySelectorAll('[data-tool]').forEach(function(t) { t.classList.remove('act'); });
+    var rv = document.querySelector('[data-tool="rotate"]');
+    if (rv) rv.classList.add('act');
+  }
+}
+
+function handleBsView(key) {
+  document.querySelectorAll('[data-view]').forEach(function(v) { v.classList.remove('act'); });
+  var btn = document.querySelector('[data-view="' + key + '"]');
+  if (btn) btn.classList.add('act');
+
+  var cam  = window._bsCamera;
+  var ctrl = window._bsControls;
+  if (!cam || !ctrl) return;
+
+  var d = 5.0;
+  var views = { front:[0,0.35,d], back:[0,0.35,-d], left:[-d,0.35,0], right:[d,0.35,0] };
+  var p = views[key];
+  if (!p) return;
+
+  cam.position.set(p[0], p[1], p[2]);
+  ctrl.target.set(0, 0, 0);
+  ctrl.autoRotate = false;
+  ctrl.enableZoom = false;
+  ctrl.enablePan  = false;
+  ctrl.update();   // ← critical: sync controls after manual camera move
+
+  document.querySelectorAll('[data-tool]').forEach(function(t) { t.classList.remove('act'); });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THREE.JS  (dynamic load, single ResizeObserver)
+═══════════════════════════════════════════════════════════════ */
+function loadThreeJS() {
+  function load(src, cb) {
+    var s = document.createElement('script');
+    s.src = src; s.onload = cb; document.head.appendChild(s);
+  }
+  load('https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js', function() {
+    load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js', function() {
+      load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js', initFigure);
+    });
+  });
+}
+
+function initFigure() {
+  var canvas = document.getElementById('body-canvas');
+  if (!canvas) return;
+  var loadingEl = document.getElementById('canvas-loading');
+  if (loadingEl) loadingEl.style.display = 'none';
+
+  var scene    = new THREE.Scene();
+  scene.background = new THREE.Color(0x080910);
+
+  var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 50);
+  camera.position.set(0, 0.35, 5.0);
+  camera.lookAt(0, 0.1, 0);
+  window._bsCamera = camera;
+
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.physicallyCorrectLights = true;
+
+  /* Single ResizeObserver — no duplicate resize functions */
+  var vp = document.getElementById('bs-viewport');
+  var ro = new ResizeObserver(function() {
+    var w = vp.offsetWidth, h = vp.offsetHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  });
+  ro.observe(vp);
+  renderer.setSize(vp.offsetWidth, vp.offsetHeight);
+  camera.aspect = vp.offsetWidth / vp.offsetHeight;
+  camera.updateProjectionMatrix();
+
+  /* Lights */
+  scene.add(new THREE.HemisphereLight(0xddeeff, 0x111122, 0.9));
+  var kl = new THREE.DirectionalLight(0xfff8f0, 3.2); kl.position.set(2.5,4.5,3.5); scene.add(kl);
+  var fl = new THREE.DirectionalLight(0xc8d8ff, 1.1); fl.position.set(-3.5,1.0,1.0); scene.add(fl);
+  var rl = new THREE.DirectionalLight(0x88aaee, 1.4); rl.position.set(-0.5,2.5,-4.5); scene.add(rl);
+  var bl = new THREE.DirectionalLight(0x4ade80, 0.28); bl.position.set(0,-4,2); scene.add(bl);
+
+  /* Materials */
+  var bodyMat = new THREE.MeshStandardMaterial({ color:0x8c8c96, roughness:0.74, metalness:0.03 });
+  var fatMat  = new THREE.MeshStandardMaterial({ color:0xf59e0b, roughness:0.65, metalness:0, transparent:true, opacity:0.48, depthWrite:false });
+  var wireMat = new THREE.MeshBasicMaterial({ color:0x4ade80, wireframe:true, transparent:true, opacity:0.14 });
+
+  /* Ellipsoid helper */
+  function E(sx,sy,sz,x,y,z) {
+    var g = new THREE.SphereGeometry(1,22,16);
+    g.applyMatrix4(new THREE.Matrix4().makeScale(sx,sy,sz).premultiply(new THREE.Matrix4().makeTranslation(x,y,z)));
+    return g;
+  }
+
+  /* Lean body — calibrated for 6'3", SMM 122.4 lb, advanced male */
+  var LEAN = [
+    E(0.163,0.193,0.158, 0,    1.38, 0.008),
+    E(0.087,0.108,0.083, 0,    1.20, 0),
+    E(0.106,0.082,0.102, 0,    1.10, 0),
+    E(0.124,0.087,0.102,-0.24, 1.02,-0.01),
+    E(0.124,0.087,0.102, 0.24, 1.02,-0.01),
+    E(0.302,0.150,0.174, 0,    0.88, 0.03),
+    E(0.124,0.110,0.120,-0.12, 0.80, 0.06),
+    E(0.124,0.110,0.120, 0.12, 0.80, 0.06),
+    E(0.255,0.130,0.160, 0,    0.70, 0.02),
+    E(0.235,0.120,0.152, 0,    0.56, 0.02),
+    E(0.083,0.180,0.094,-0.22, 0.52, 0),
+    E(0.083,0.180,0.094, 0.22, 0.52, 0),
+    E(0.230,0.122,0.150, 0,    0.42, 0.01),
+    E(0.234,0.120,0.154, 0,    0.30, 0.01),
+    E(0.260,0.124,0.182, 0,    0.12, 0),
+    E(0.091,0.090,0.110,-0.21, 0.10, 0),
+    E(0.091,0.090,0.110, 0.21, 0.10, 0),
+    E(0.110,0.130,0.134,-0.12,-0.02,-0.06),
+    E(0.110,0.130,0.134, 0.12,-0.02,-0.06),
+    E(0.150,0.200,0.134,-0.155,-0.22, 0),
+    E(0.136,0.195,0.122,-0.155,-0.46, 0),
+    E(0.096,0.092,0.096,-0.155,-0.70, 0.01),
+    E(0.114,0.160,0.102,-0.155,-0.91, 0.01),
+    E(0.059,0.067,0.059,-0.155,-1.22, 0),
+    E(0.067,0.039,0.127,-0.155,-1.37, 0.05),
+    E(0.150,0.200,0.134, 0.155,-0.22, 0),
+    E(0.136,0.195,0.122, 0.155,-0.46, 0),
+    E(0.096,0.092,0.096, 0.155,-0.70, 0.01),
+    E(0.114,0.160,0.102, 0.155,-0.91, 0.01),
+    E(0.059,0.067,0.059, 0.155,-1.22, 0),
+    E(0.067,0.039,0.127, 0.155,-1.37, 0.05),
+    E(0.094,0.092,0.084,-0.36,  0.93, 0),
+    E(0.090,0.205,0.082,-0.43,  0.71, 0),
+    E(0.071,0.067,0.071,-0.47,  0.48, 0.01),
+    E(0.067,0.190,0.061,-0.49,  0.25, 0),
+    E(0.047,0.050,0.037,-0.51,  0.06, 0),
+    E(0.065,0.090,0.029,-0.51, -0.06, 0),
+    E(0.094,0.092,0.084, 0.36,  0.93, 0),
+    E(0.090,0.205,0.082, 0.43,  0.71, 0),
+    E(0.071,0.067,0.071, 0.47,  0.48, 0.01),
+    E(0.067,0.190,0.061, 0.49,  0.25, 0),
+    E(0.047,0.050,0.037, 0.51,  0.06, 0),
+    E(0.065,0.090,0.029, 0.51, -0.06, 0),
+  ];
+
+  /* Fat overlay — WHR 1.01, Visceral Fat Level 10 */
+  var FAT = [
+    E(0.338,0.168,0.208, 0,     0.88, 0.02),
+    E(0.336,0.135,0.225, 0,     0.56, 0.03),
+    E(0.330,0.138,0.222, 0,     0.42, 0.02),
+    E(0.334,0.135,0.224, 0,     0.30, 0.02),
+    E(0.300,0.140,0.210, 0,     0.12, 0),
+    E(0.170,0.208,0.152,-0.155,-0.22, 0),
+    E(0.154,0.200,0.138,-0.155,-0.46, 0),
+    E(0.170,0.208,0.152, 0.155,-0.22, 0),
+    E(0.154,0.200,0.138, 0.155,-0.46, 0),
+    E(0.102,0.213,0.094,-0.43,  0.71, 0),
+    E(0.102,0.213,0.094, 0.43,  0.71, 0),
+  ];
+
+  var leanGeo = THREE.BufferGeometryUtils.mergeBufferGeometries(LEAN, false);
+  leanGeo.computeVertexNormals();
+  var fatGeo  = THREE.BufferGeometryUtils.mergeBufferGeometries(FAT, false);
+  fatGeo.computeVertexNormals();
+
+  var grp = new THREE.Group();
+  grp.add(new THREE.Mesh(leanGeo, bodyMat));
+  var wire = new THREE.Mesh(leanGeo.clone(), wireMat);
+  wire.scale.setScalar(1.008);
+  grp.add(wire);
+  var fatMesh = new THREE.Mesh(fatGeo, fatMat);
+  grp.add(fatMesh);
+  window._bsFatMesh = fatMesh;
+
+  /* Ground disc */
+  var gd = new THREE.Mesh(new THREE.CircleGeometry(0.44,56), new THREE.MeshBasicMaterial({ color:0x1a1a22 }));
+  gd.rotation.x = -Math.PI/2; gd.position.y = -1.44; grp.add(gd);
+
+  /* Pulsing glow ring at base */
+  var glowRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.46, 0.014, 8, 72),
+    new THREE.MeshBasicMaterial({ color:0x4ade80, transparent:true, opacity:0.5 })
+  );
+  glowRing.rotation.x = Math.PI/2;
+  glowRing.position.y = -1.43;
+  grp.add(glowRing);
+
+  grp.position.y = -0.20;
+  scene.add(grp);
+
+  /* OrbitControls */
+  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping   = true;
+  controls.dampingFactor   = 0.07;
+  controls.autoRotate      = true;
+  controls.autoRotateSpeed = 0.85;
+  controls.enableZoom      = false;
+  controls.enablePan       = false;
+  controls.minPolarAngle   = Math.PI/5;
+  controls.maxPolarAngle   = Math.PI*0.82;
+  controls.target.set(0, 0, 0);
+  window._bsControls = controls;
+
+  var glowT = 0;
+  (function animate() {
+    requestAnimationFrame(animate);
+    glowT += 0.016;
+    glowRing.material.opacity = 0.18 + 0.24 * (0.5 + 0.5 * Math.sin(glowT));
+    controls.update();
+    renderer.render(scene, camera);
+  })();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLL FADE  (IntersectionObserver, 60ms stagger)
+═══════════════════════════════════════════════════════════════ */
+function initScrollFade() {
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (!entry.isIntersecting) return;
+      var items = entry.target.querySelectorAll('.fade-up:not(.visible)');
+      items.forEach(function(el, i) {
+        setTimeout(function() { el.classList.add('visible'); }, i * 60);
+      });
+      io.unobserve(entry.target);
+    });
+  }, { threshold: 0.07 });
+
+  document.querySelectorAll('section, #roadmap').forEach(function(s) { io.observe(s); });
+
+  /* Items already in the viewport on load */
+  document.querySelectorAll('.fade-up').forEach(function(el) {
+    var r = el.getBoundingClientRect();
+    if (r.top < window.innerHeight) el.classList.add('visible');
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', function() {
+  buildRoadmap();
+  initHero();
+  initTodayFocus();
+  initNutrition();
+  initComposition();
+  buildDayGrid();
+  initModal();
+  initBodyScan();
+  initScrollFade();
+});
+
+})();
+</script>
+</body>
+</html>
