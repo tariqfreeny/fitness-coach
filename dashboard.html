@@ -62,8 +62,9 @@
    RESET & BASE
 ═══════════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5; }
+button, summary { touch-action: manipulation; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -606,8 +607,8 @@ details[open] > .quick-build summary::before { content: '−'; }
 .modal-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .modal-close {
   background: var(--surface-2); border: none; color: var(--muted);
-  width: 30px; height: 30px; border-radius: 7px;
-  cursor: pointer; font-size: 14px;
+  width: 44px; height: 44px; border-radius: 10px;
+  cursor: pointer; font-size: 18px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; transition: all var(--ease);
 }
@@ -659,15 +660,92 @@ footer { padding: 22px 24px; text-align: center; font-size: 11px; color: var(--d
   .bs-left    { display: none; }
   .rm-summary { grid-template-columns: 1fr; }
   .rm-sum-item:not(:first-child) { border-left: none; border-top: 1px solid var(--scan-border); }
+  .bs-vp      { height: 420px; }
 }
 @media (max-width: 600px) {
-  .day-grid   { grid-template-columns: repeat(2,1fr); }
-  .stat-grid  { grid-template-columns: repeat(2,1fr); }
-  .hero-stats { gap: 16px; }
+  /* ── Layout ── */
+  .container    { padding: 0 16px; }
+  .section-title { font-size: 22px; margin-bottom: 20px; }
+
+  /* ── Nav: scrollable strip instead of hidden ── */
+  nav { padding: 0 16px; gap: 8px; height: 52px; }
+  .nav-links {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links a  { white-space: nowrap; padding: 6px 10px; font-size: 11px; }
+
+  /* ── Roadmap ── */
+  .rm-track-row, .rm-squares-row { padding: 0 16px; }
+  .rm-miles     { padding: 0 16px; }
+  .rm-sum-item  { padding: 12px 16px; }
+  .rm-squares   { gap: 2px; }
+  .rm-sq        { height: 14px; }
+  .rm-callout   { display: none !important; }
+  .rm-m-dt      { display: none; }
+  .rm-m-wt      { font-size: 12px; }
+
+  /* ── Hero ── */
+  #hero       { padding: 36px 0 28px; }
+  .hero-stats { gap: 16px; flex-wrap: wrap; }
   .hdiv       { display: none; }
-  .rm-squares { gap: 2px; }
-  .rm-sq      { height: 14px; }
-  nav .nav-links { display: none; }
+  .hs-val     { font-size: 26px; }
+  .prog-block { max-width: 100%; margin-top: 20px; }
+
+  /* ── Section spacing ── */
+  #nutrition, #composition, #training { padding: 44px 0; }
+
+  /* ── Nutrition tabs: bigger touch area ── */
+  .nutr-tabs  { gap: 6px; margin-bottom: 18px; }
+  .tab        { padding: 10px 13px; font-size: 12px; }
+
+  /* ── Macro bar label column ── */
+  .macro-row  { grid-template-columns: 62px 1fr 54px; gap: 10px; }
+
+  /* ── Training day cards ── */
+  .day-grid   { grid-template-columns: repeat(2,1fr); }
+  .day-card   { padding: 12px 8px; }
+  .dc-tag     { font-size: 10px; }
+  .dc-name    { font-size: 12px; }
+
+  /* ── Composition stat grid ── */
+  .stat-grid  { grid-template-columns: repeat(2,1fr); }
+
+  /* ── Comp bar: hide overflow labels (legend below repeats info) ── */
+  .cb-lean    { font-size: 0; padding-left: 0; }
+  .cb-fat     { font-size: 0; padding-left: 0; }
+
+  /* ── 3D body scan ── */
+  .bs-vp      { height: 320px; }
+  .bs-wrap    { padding: 16px 16px 0; }
+  .bs-tabs    { overflow-x: auto; scrollbar-width: none; }
+  .bs-tabs::-webkit-scrollbar { display: none; }
+  .bs-tab     { white-space: nowrap; padding: 9px 12px; font-size: 10px; }
+  .bs-tool    { padding: 9px 9px; min-width: 44px; font-size: 9px; }
+
+  /* ── Modal ── */
+  #overlay    { padding: 12px; }
+  .modal      { padding: 20px 16px; max-height: 94vh; }
+  .modal-head { margin-bottom: 16px; }
+
+  /* ── Exercise table: hide index column ── */
+  .ex-table th:first-child,
+  .ex-table td:first-child { display: none; }
+  .ex-table th  { font-size: 10px; padding-right: 8px; padding-bottom: 8px; }
+  .ex-table td  { font-size: 12px; padding: 10px 8px 10px 0; }
+  .ex-name      { font-size: 13px; }
+  .ex-load      { font-size: 12px; }
+  .ex-cue       { font-size: 10px; }
+
+  /* ── Shopping list ── */
+  .shop-item      { gap: 10px; padding: 10px 14px; }
+  .shop-item-name { font-size: 12px; }
+  .shop-item-qty  { font-size: 12px; }
 }
 
 </style>
@@ -1390,6 +1468,7 @@ summary.quick-build {
   font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   color: var(--blue); cursor: pointer; list-style: none;
   transition: color var(--ease);
+  padding: 8px 0; touch-action: manipulation;
 }
 summary.quick-build::-webkit-details-marker { display: none; }
 summary.quick-build::before { content: '+'; font-size: 14px; font-weight: 900; }
