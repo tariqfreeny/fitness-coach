@@ -119,8 +119,6 @@ nav {
 ═══════════════════════════════════════════════════════════════════ */
 #roadmap {
   background: var(--scan-bg);
-  border-bottom: 1px solid var(--scan-border);
-  padding: 18px 0 0;
 }
 
 /* milestone track */
@@ -748,6 +746,23 @@ footer { padding: 22px 24px; text-align: center; font-size: 11px; color: var(--d
   .shop-item-qty  { font-size: 12px; }
 }
 
+.hero-avatar { position: relative; display: inline-block; margin-bottom: 20px; }
+.hero-avatar-ring { width: 88px; height: 88px; border-radius: 50%; border: 2.5px solid var(--green); overflow: hidden; background: var(--surface); display: flex; align-items: center; justify-content: center; }
+.hero-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hero-avatar-initials { width: 100%; height: 100%; display: none; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: var(--green); letter-spacing: -.02em; }
+.hero-avatar-badge { position: absolute; bottom: -4px; right: -4px; background: var(--green); color: #052e16; font-size: 8px; font-weight: 800; letter-spacing: .1em; padding: 2px 6px; border-radius: 99px; border: 2px solid var(--bg); }
+.mfp-callout { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--surface); border: 1px solid rgba(59,130,246,.3); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px; flex-wrap: wrap; }
+.mfp-callout-left { display: flex; align-items: center; gap: 14px; }
+.mfp-logo { width: 38px; height: 38px; border-radius: 9px; background: #1565c0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #fff; letter-spacing: -.02em; flex-shrink: 0; }
+.mfp-callout-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.mfp-callout-sub { font-size: 11px; color: var(--muted); }
+.mfp-cta-btn { display: inline-block; font-size: 12px; font-weight: 700; padding: 9px 16px; border-radius: 8px; background: var(--blue-bg); border: 1px solid var(--blue); color: var(--blue); text-decoration: none; white-space: nowrap; transition: all var(--ease); flex-shrink: 0; }
+.mfp-cta-btn:hover { background: var(--blue); color: #fff; }
+.training-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 10px; }
+.training-section-head .section-label { margin-bottom: 0; }
+.strava-btn { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; padding: 8px 14px; border-radius: 8px; background: rgba(252,76,2,.1); border: 1px solid rgba(252,76,2,.4); color: #fc4c02; text-decoration: none; transition: all var(--ease); }
+.strava-btn:hover { background: #fc4c02; color: #fff; }
+
 </style>
 </head>
 <body>
@@ -758,7 +773,7 @@ footer { padding: 22px 24px; text-align: center; font-size: 11px; color: var(--d
 <nav>
   <a class="nav-brand" href="#roadmap">Tariq Freeny &middot; Recomp</a>
   <ul class="nav-links">
-    <li><a href="#roadmap">Timeline</a></li>
+    <li><a href="#composition">Timeline</a></li>
     <li><a href="#hero">Overview</a></li>
     <li><a href="#nutrition">Nutrition</a></li>
     <li><a href="#composition">Composition</a></li>
@@ -768,44 +783,19 @@ footer { padding: 22px 24px; text-align: center; font-size: 11px; color: var(--d
 </nav>
 
 <!-- ═══════════════════════════════════════════════════════════════
-     ROADMAP STRIP  (mission-control banner)
-════════════════════════════════════════════════════════════════ -->
-<section id="roadmap" aria-label="11-week progress roadmap">
-  <div class="rm-track-row">
-    <div class="rm-track">
-      <div class="rm-fill" id="rm-fill"></div>
-    </div>
-  </div>
-  <div class="rm-miles" id="rm-miles"><!-- JS --></div>
-  <div class="rm-squares-row" style="margin-top:12px">
-    <div class="rm-squares" id="rm-squares"><!-- JS --></div>
-  </div>
-  <div class="rm-summary">
-    <div class="rm-sum-item">
-      <div class="rm-sum-lbl">Start</div>
-      <div class="rm-sum-val">May 27, 2026</div>
-      <div class="rm-sum-sub">262.6 lb &middot; 19.5% BF</div>
-    </div>
-    <div class="rm-sum-item">
-      <div class="rm-sum-lbl">Midpoint &mdash; Wk 6</div>
-      <div class="rm-sum-val">~July 8, 2026</div>
-      <div class="rm-sum-sub">~255 lb &middot; ~18% BF</div>
-    </div>
-    <div class="rm-sum-item">
-      <div class="rm-sum-lbl">Goal</div>
-      <div class="rm-sum-val" style="color:var(--green)">~Aug 12, 2026</div>
-      <div class="rm-sum-sub">~248.7 lb &middot; ~16.6% BF</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════════════
      HERO
 ════════════════════════════════════════════════════════════════ -->
 <section id="hero" aria-label="Dashboard overview">
   <div class="container">
     <div class="hero-grid">
       <div>
+        <div class="hero-avatar">
+          <div class="hero-avatar-ring">
+            <img src="profile.jpg" alt="Tariq Freeny" class="hero-avatar-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="hero-avatar-initials">TF</div>
+          </div>
+          <div class="hero-avatar-badge">SCAN</div>
+        </div>
         <div class="hero-eyebrow fade-up">Body Recomposition Protocol &middot; 11-Week Program</div>
         <h1 class="hero-name fade-up">Tariq<br>Freeny</h1>
         <p class="hero-goal fade-up">Lose <strong>13.9 lb of fat</strong> while preserving lean mass &mdash; Former D1 athlete &middot; Advanced training &middot; Lifetime Fitness, Chicago</p>
@@ -866,6 +856,16 @@ footer { padding: 22px 24px; text-align: center; font-size: 11px; color: var(--d
   <div class="container">
     <div class="section-label fade-up">Intermittent Fasting &middot; 12:00 PM &ndash; 8:00 PM Window</div>
     <h2 class="section-title fade-up">Nutrition Targets</h2>
+    <div class="mfp-callout fade-up">
+      <div class="mfp-callout-left">
+        <div class="mfp-logo">MFP</div>
+        <div>
+          <div class="mfp-callout-title">MyFitnessPal — Log Today's Meals</div>
+          <div class="mfp-callout-sub">Sync your food log with the targets below. Eating window: 12:00 PM – 8:00 PM.</div>
+        </div>
+      </div>
+      <a href="https://www.myfitnesspal.com/food/diary" target="_blank" rel="noopener" class="mfp-cta-btn">Open Food Diary ↗</a>
+    </div>
     <div class="nutr-tabs fade-up">
       <button class="tab s" data-tab="s">Strength Day</button>
       <button class="tab c" data-tab="c">Cardio Day</button>
@@ -1245,6 +1245,34 @@ footer { padding: 22px 24px; text-align: center; font-size: 11px; color: var(--d
 ════════════════════════════════════════════════════════════════ -->
 <section id="composition" aria-label="Body composition snapshot">
   <div class="container">
+    <div style="margin-bottom: 36px">
+      <div class="rm-track-row">
+        <div class="rm-track">
+          <div class="rm-fill" id="rm-fill"></div>
+        </div>
+      </div>
+      <div class="rm-miles" id="rm-miles"><!-- JS --></div>
+      <div class="rm-squares-row" style="margin-top:12px">
+        <div class="rm-squares" id="rm-squares"><!-- JS --></div>
+      </div>
+      <div class="rm-summary">
+        <div class="rm-sum-item">
+          <div class="rm-sum-lbl">Start</div>
+          <div class="rm-sum-val">May 27, 2026</div>
+          <div class="rm-sum-sub">262.6 lb &middot; 19.5% BF</div>
+        </div>
+        <div class="rm-sum-item">
+          <div class="rm-sum-lbl">Midpoint &mdash; Wk 6</div>
+          <div class="rm-sum-val">~July 8, 2026</div>
+          <div class="rm-sum-sub">~255 lb &middot; ~18% BF</div>
+        </div>
+        <div class="rm-sum-item">
+          <div class="rm-sum-lbl">Goal</div>
+          <div class="rm-sum-val" style="color:var(--green)">~Aug 12, 2026</div>
+          <div class="rm-sum-sub">~248.7 lb &middot; ~16.6% BF</div>
+        </div>
+      </div>
+    </div>
     <div class="section-label fade-up">InBody Assessment &middot; May 27, 2026</div>
     <h2 class="section-title fade-up">Body Composition</h2>
     <div class="stat-grid">
@@ -1430,7 +1458,13 @@ footer { padding: 22px 24px; text-align: center; font-size: 11px; color: var(--d
 ════════════════════════════════════════════════════════════════ -->
 <section id="training" aria-label="Weekly training plan">
   <div class="container">
-    <div class="section-label fade-up">4 Strength &middot; 2 Cardio &middot; 1 Rest</div>
+    <div class="training-section-head fade-up">
+      <div class="section-label" style="margin-bottom:0">4 Strength &middot; 2 Cardio &middot; 1 Rest</div>
+      <a href="https://www.strava.com/athletes/4470290" target="_blank" rel="noopener" class="strava-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+        Follow on Strava
+      </a>
+    </div>
     <h2 class="section-title fade-up">Weekly Training Plan</h2>
     <div class="day-grid" id="day-grid"><!-- JS --></div>
     <p class="training-hint fade-up">Click any day to view the full session details &amp; exercises</p>
